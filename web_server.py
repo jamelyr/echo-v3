@@ -2108,17 +2108,36 @@ async def archive_chat(request):
         # Ensure archives directory exists
         os.makedirs("archives", exist_ok=True)
         
-        # Write chat history to file
+        # Get completed tasks to archive
+        completed_tasks = database.get_tasks(status="completed")
+        
+        # Write chat history and tasks to file
         with open(filepath, 'w') as f:
             f.write(f"Chat Archive - {timestamp}\n")
             f.write("=" * 60 + "\n\n")
+            
+            # Write chat history
+            f.write("CHAT HISTORY:\n")
+            f.write("-" * 60 + "\n\n")
             for msg in history:
                 role = msg['role'].upper()
                 content = msg['content']
                 f.write(f"{role}:\n{content}\n\n")
+            
+            # Write completed tasks
+            if completed_tasks:
+                f.write("\n" + "=" * 60 + "\n")
+                f.write("COMPLETED TASKS:\n")
+                f.write("-" * 60 + "\n\n")
+                for task in completed_tasks:
+                    f.write(f"✅ {task['description']}\n")
+                    f.write(f"   Completed: {task.get('completed_at', 'N/A')}\n\n")
         
         # Clear the database chat history for this session
         database.clear_chat_history(sid)
+        
+        # Archive completed tasks (move to archive or delete)
+        database.delete_completed_tasks()
         
         # Clear the in-memory session
         if sid in SESSIONS:
