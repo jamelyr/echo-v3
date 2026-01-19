@@ -1,0 +1,29 @@
+SUMMARY OF WORK COMPLETED
+
+FIXES APPLIED
+- Model confusion: UI now shows actual loaded model via active badge and syncs dropdowns to MLX server state.
+- Request storm: removed extra auto-polling, debounced global sync, reduced MLX API spam.
+- Recall bug: disabled fast-path recall that dumped raw notes. “what is my name” now replies normally.
+- Model persistence: swap now saves only on success; unload/load delay reduces RAM spike.
+- Mauritius timezone: date/time now correct.
+- BetterShift: added parse_date + smart defaults for all-day Off/Leave shifts.
+
+CURRENT STATUS
+- Services running via ./run_all.sh restart.
+- LLM inference works (use non-VL model like Llama 3B for text chat).
+- Model selector should no longer disappear or lie about loaded model.
+- “what is my name” returns a normal response without raw note IDs.
+
+WHAT YOU SHOULD DO NEXT
+1) Use a non-VL model (Llama 3B) for text chat reliability.
+2) When adding models, place them directly in models/chat/ModelName/ and click refresh.
+3) If “SYSTEM ASLEEP” appears, wait 10s or click refresh once.
+4) Quick browser checks:
+   - “what is my name”
+   - “who is working”
+   - “show me today’s news”
+   - model dropdown vs active badge consistency
+
+NOTES
+- Falcon reasoning model outputs <think> tags; output is now stripped correctly.
+- Active badge shows current model + RAM.

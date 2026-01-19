@@ -1,0 +1,417 @@
+================================================================================
+                         ECHO v2 - PROJECT MIGRATION DOCUMENT
+================================================================================
+                              Last Updated: 2026-01-10
+================================================================================
+
+TABLE OF CONTENTS
+-----------------
+1. PROJECT OVERVIEW
+2. ARCHITECTURE
+3. FILE STRUCTURE
+4. DEPENDENCIES
+5. CONFIGURATION
+6. BUG HISTORY & FIXES
+7. COMMANDS REFERENCE
+8. KNOWN ISSUES & LIMITATIONS
+9. DEVELOPMENT NOTES
+
+================================================================================
+1. PROJECT OVERVIEW
+================================================================================
+
+Echo v2 is a local-first, privacy-focused AI Discord bot designed for macOS.
+It uses LM Studio for local LLM inference and falls back to OpenAI cloud when
+needed.
+
+KEY FEATURES:
+- Natural language task management (add, complete, delete tasks)
+- Semantic memory with RAG (Retrieval Augmented Generation)
+- Web search integration via DuckDuckGo
+- Audio transcription via Whisper
+- Model hot-swapping with safety constraints (1 text + 1 embedding max)
+- Sleep/Wake mode for resource management
+- Mauritius local news aggregation (/news command)
+
+TARGET HARDWARE: MacBook Air 16GB RAM
+
+================================================================================
+2. ARCHITECTURE
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              DISCORD LAYER                                   │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐ │
+│  │ Slash Cmds   │  │ on_message   │  │ Schedulers   │  │ Audio Handler    │ │
+│  │ /sleep       │  │ (LLM routing)│  │ (reminders)  │  │ (Whisper)        │ │
+│  │ /wake        │  │              │  │              │  │                  │ │
+│  │ /models      │  │              │  │              │  │                  │ │
+│  │ /swap        │  │              │  │              │  │                  │ │
+│  │ /status      │  │              │  │              │  │                  │ │
+│  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────────┘ │
+└────────────────────────────────────┬────────────────────────────────────────┘
+                                     │
+                                     ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           LLM CLIENT LAYER                                   │
+│                                                                              │
+│  ┌──────────────────────────────────────────────────────────────────────┐   │
+│  │ ModelManager (Singleton)                                              │   │
+│  │  - ensure_defaults_loaded()   Load default models                     │   │
+│  │  - swap_model(name)           Safe swap with conflict resolution      │   │
+│  │  - unload_all_models()        For sleep mode                          │   │
+│  │  - get_loaded_models_info()   Query lms ps                            │   │
+│  └──────────────────────────────────────────────────────────────────────┘   │
+│                                                                              │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐ │
+│  │analyze_intent│  │generate_resp │  │get_embedding │  │ search_web       │ │
+│  │(async)       │  │(async, RAG)  │  │(async)       │  │ (async, DDGS)    │ │
+│  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────────┘ │
+└────────────────────────────────────┬────────────────────────────────────────┘
+                                     │
+                                     ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              DATA LAYER                                      │
+│                                                                              │
+│  ┌────────────────────────────────────────────────────────────────────────┐ │
+│  │ SQLite Database (echo_v2.db)                                           │ │
+│  │  - tasks: id, description, status, due_date, created_at                │ │
+│  │  - notes: id, content, embedding (BLOB), created_at                    │ │
+│  │  - processed_messages: message_id (for deduplication)                  │ │
+│  └────────────────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+3. FILE STRUCTURE
+================================================================================
+
+/Users/marley/Documents/ag/
+├── bot.py              # Main Discord bot (Slash Commands, event handlers)
+├── llm_client.py       # LLM operations (ModelManager, async wrappers)
+├── database.py         # SQLite operations (tasks, notes, message tracking)
+├── .env                # Configuration (tokens, IDs)
+├── requirements.txt    # Python dependencies
+├── echo_v2.db          # SQLite database (created at runtime)
+│
+├── test_sleep.py       # Standalone sleep test script
+├── verify_system.py    # Full system verification script
+└── download_model.py   # Pre-download Whisper model
+
+================================================================================
+4. DEPENDENCIES
+================================================================================
+
+requirements.txt:
+  discord.py            # Discord API
+  openai                # OpenAI client (used for LM Studio too)
+  python-dotenv         # Environment config
+  duckduckgo-search     # Web search (NOTE: renamed to 'ddgs' in newer versions)
+  numpy                 # For embedding math
+  openai-whisper        # Audio transcription
+
+Additional system requirements:
+  - LM Studio (macOS app) with lms CLI
+  - Python 3.9+
+
+================================================================================
+5. CONFIGURATION
+================================================================================
+
+.env file:
+  DISCORD_TOKEN=...           # Discord bot token
+  LM_STUDIO_URL=...           # Default: http://localhost:1234/v1
+  ADMIN_USER_ID=...           # Discord user ID for admin access
+  ALLOWED_USER_ID=...         # Legacy fallback for ADMIN_USER_ID
+  OPENAI_API_KEY=...          # Optional cloud fallback
+  DISCORD_CHANNEL_ID=...      # Optional, for scheduled messages
+
+Default Models (hardcoded in llm_client.py):
+  - Text: qwen/qwen3-vl-4b
+  - Embedding: text-embedding-nomic-embed-text-v1.5
+
+================================================================================
+6. BUG HISTORY & FIXES
+================================================================================
+
+[BUG-001] NameError: datetime not defined
+  Cause: Missing import in bot.py
+  Fix: Added `import datetime`
+
+[BUG-002] /sleep not unloading models
+  Cause: `lms unload -a` flag was unreliable
+  Fix: Rewrote unload_all_models() to iterate and unload each model explicitly
+       with retry logic
+
+[BUG-003] /wake up not loading embedding model
+  Cause: ensure_defaults_loaded() ran in background (fire-and-forget)
+  Fix: Made cmd_wake synchronous - waits for model load and confirms both loaded
+
+[BUG-004] Commands saved as tasks (e.g., "/wake up" became a task)
+  Cause: Catch-up logic processed commands as regular messages
+  Fix: Added command skip logic in catch-up
+  Final Fix: Migrated to Slash Commands (commands are not messages)
+
+[BUG-005] Model thrashing on startup (load/unload/load cycle)
+  Cause: ensure_defaults_loaded() called multiple times; race conditions
+  Fix: Added "already loaded" check in swap_model()
+
+[BUG-006] Command parsing issues ("/ sleep" with space not recognized)
+  Cause: String matching for prefix commands was fragile
+  Fix: Migrated to Discord Slash Commands
+
+[BUG-007] Whisper model download stuck
+  Cause: openai-whisper package not installed (mlx-whisper was installed instead)
+  Fix: Installed openai-whisper, created download_model.py for pre-caching
+
+[BUG-008] duckduckgo_search deprecation warning
+  Status: Not critical, but package was renamed to 'ddgs'
+  Note: Can update import when ready
+
+[BUG-009] LM Studio Rejected Embedding Model
+  Cause: Default model was "llm" type, but LM Studio requires "embedding" type
+  Fix: Switched default to Nomic Embed (v1.5). Removed auto-load-on-chat risk.
+
+================================================================================
+7. COMMANDS REFERENCE
+================================================================================
+
+SLASH COMMANDS (registered with Discord):
+  /sleep          Enter sleep mode, unload all models
+  /wake           Wake up, launch LM Studio, load defaults
+  /models         List available models from lms ls
+  /swap <name>    Swap to a different model (safe - unloads conflict first)
+  /status         Check bot status and loaded models
+
+NATURAL LANGUAGE (processed by LLM):
+  "Add task: Buy groceries"          -> Creates task
+  "Show my tasks"                    -> Lists tasks
+  "Complete task 1"                  -> Marks task done
+  "Delete all tasks"                 -> Deletes all
+  "Remember that X"                  -> Saves note with embedding
+  "Search for latest AI news"        -> Web search + response
+  <anything else>                    -> General chat
+
+================================================================================
+8. KNOWN ISSUES & LIMITATIONS
+================================================================================
+
+1. GLOBAL SYNC DELAY
+   Slash commands sync globally which can take up to 1 hour.
+   For instant testing, use guild-specific sync (modify setup_hook).
+
+2. LM STUDIO DEPENDENCY
+   Bot assumes LM Studio is installed at ~/.lmstudio/bin/lms
+   Falls back to PATH if not found.
+
+3. SINGLE-USER DESIGN
+   ADMIN_USER_ID restricts all interactions to one user.
+   Multi-user support would require role-based access.
+
+4. MEMORY CONSTRAINTS
+   Hard limit: 1 text model + 1 embedding model to fit 16GB RAM.
+   Larger models may cause issues.
+
+5. NO PERSISTENT STATE FOR BOT_ACTIVE
+   If bot crashes while sleeping, it wakes up on restart.
+   Could persist state to file/DB if needed.
+
+================================================================================
+9. DEVELOPMENT NOTES
+================================================================================
+
+ASYNC PATTERN:
+  All LLM operations use `run_in_thread()` wrapper to avoid blocking:
+    async def run_in_thread(func, *args, **kwargs):
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, functools.partial(func, *args, **kwargs))
+
+ADMIN CHECK (for slash commands):
+  def is_admin(interaction: discord.Interaction) -> bool:
+      if not ADMIN_USER_ID:
+          return True
+      return str(interaction.user.id) == str(ADMIN_USER_ID)
+
+LMS CLI COMMANDS USED:
+  lms ps                   # List loaded models
+  lms ls                   # List available models
+  lms load <name> --gpu max  # Load model
+  lms unload <identifier>  # Unload specific model
+
+TESTING:
+  python3 test_sleep.py      # Test sleep/unload
+  python3 verify_system.py   # Full system verification (async)
+
+================================================================================
+APPENDIX B: MEMORY & PERFORMANCE OPTIMIZATION
+================================================================================
+
+Targetting 16GB RAM:
+
+1. SLIDING WINDOW MEMORY
+   - bot.py maintains a `USER_HISTORIES` dict.
+   - Only the last 10 messages are sent to the LLM.
+   - This prevents context bloat and keeps processing speed consistent.
+
+2. CONTEXT MANAGEMENT (RAG)
+   - Semantic search in database.py is limited to `top_k=2`.
+   - Notes provide long-term memory without the speed penalty of full history.
+
+3. CONCURRENCY LOCKING
+   - ModelManager uses `asyncio.Lock()` for all swap/load operations.
+   - Prevents Parallel model loading (which caused "duplicate" models).
+
+4. READ-ONLY INFERENCE
+   - get_embedding() no longer auto-loads models during chat.
+   - Prevents system freezing from mid-conversation model swaps.
+   - If model is missing, it skips RAG and logs a warning.
+
+================================================================================
+                              END OF DOCUMENT
+================================================================================
+
+================================================================================
+APPENDIX A: BACKGROUND SERVICE (macOS)
+================================================================================
+
+To run Echo Bot as a background service that starts on login:
+
+INSTALL:
+  cd /Users/marley/Documents/ag
+  ./service.sh install
+
+COMMANDS:
+  ./service.sh status       # Check if running
+  ./service.sh logs         # View recent logs
+  ./service.sh logs-follow  # Follow logs in real-time
+  ./service.sh restart      # Restart the service
+  ./service.sh uninstall    # Remove the service
+
+FILES CREATED:
+  - com.echo.bot.plist      # Launch Agent configuration
+  - service.sh              # Management script
+  - logs/echo_stdout.log    # Standard output log
+  - logs/echo_stderr.log    # Error log
+
+NOTES ON LAPTOP SLEEP:
+  - When laptop lid is closed, macOS suspends most processes
+  - Bot will automatically reconnect when laptop wakes
+  - For 24/7 operation with lid closed, use clamshell mode:
+    1. Connect to external display
+    2. Connect to power
+    3. Close lid (Mac stays awake)
+  - Alternatively, prevent sleep via System Settings > Energy
+
+================================================================================
+APPENDIX B: CODE CHANGELOG (FOR LLM REFERENCE)
+================================================================================
+
+!!! IMPORTANT: ANY LLM MODIFYING THIS CODEBASE MUST LOG CHANGES HERE !!!
+
+Format for each entry:
+--------------------------------------------------------------------------------
+DATE: YYYY-MM-DD
+REASON: [Why this change was made]
+FILE: [filename.py]
+LOCATION: [Function name or line range]
+CHANGE: [Description of what was changed]
+RISK: [Low/Medium/High - potential for breaking other features]
+--------------------------------------------------------------------------------
+
+=== CHANGELOG ENTRIES ===
+
+--------------------------------------------------------------------------------
+DATE: 2026-01-11
+REASON: LM Studio v1.x rejects `response_format={"type": "json_object"}`
+FILE: llm_client.py
+LOCATION: analyze_intent() function, line ~170
+CHANGE: Removed the response_format parameter from the chat completion call
+RISK: Low - parameter was not supported anyway
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+DATE: 2026-01-11
+REASON: Intent parsing not returning 'description' key for add_task action
+FILE: llm_client.py
+LOCATION: analyze_intent() function, prompt string
+CHANGE: Made prompt more explicit about required JSON structure for add_task
+RISK: Low - only changes the LLM prompt, not logic
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+DATE: 2026-01-11
+REASON: /news command was ignoring news_sources.txt and using DuckDuckGo
+FILE: llm_client.py
+LOCATION: generate_news_report() function
+CHANGE: Rewrote to read URLs from news_sources.txt and fetch real headlines
+RISK: Medium - requires network access and URL parsing
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+DATE: 2026-01-11
+REASON: Test data pollution in database causing weird bot persona
+FILE: tasks.db
+LOCATION: notes table
+CHANGE: Deleted notes containing 'secret', 'Echo-99', 'Alpha-Omega'
+RISK: Low - only removes test data, not user data
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+DATE: 2026-01-11
+REASON: User requested direct GPT-5 access via slash command
+FILE: bot.py
+LOCATION: After cmd_news(), new function cmd_gpt()
+CHANGE: Added /gpt <prompt> command that sends prompt directly to OpenAI cloud
+RISK: Low - new feature, does not affect existing functionality
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+DATE: 2026-01-11
+REASON: User requested Dynamic Personal Context Layer for personalized AI responses
+FILE: context_manager.py (NEW), user_context.json (NEW), llm_client.py, bot.py
+LOCATION: New module + generate_response() + new commands
+CHANGE: Created persistent personal context (location, profession, team, etc.) that gets
+        injected into all LLM prompts. Added /context_update and /context_show commands.
+RISK: Low - additive feature, does not modify existing memory/RAG systems
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+DATE: 2026-01-11
+REASON: Audio transcription failed due to venv PATH isolation
+FILE: echo_env/bin/ffmpeg (SYMLINK CREATED)
+LOCATION: Virtual environment bin directory
+CHANGE: Created symlink from echo_env/bin/ffmpeg -> /opt/homebrew/bin/ffmpeg
+        This allows Whisper to find ffmpeg when running inside the virtual environment.
+RISK: None - symlink solution, no code changes
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+DATE: 2026-01-11
+REASON: Production cleanup - remove debugging artifacts
+FILE: bot.py
+LOCATION: Startup and audio handler functions
+CHANGE: Removed all DEBUG print statements added during troubleshooting.
+        Kept only production-ready error logging.
+RISK: None - purely cosmetic, improves log cleanliness
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+DATE: 2026-01-11
+REASON: User requested personal name in context
+FILE: user_context.json, context_manager.py
+LOCATION: Context data and formatting functions
+CHANGE: Added "name" field to user context. Bot now addresses user as "Marley" in responses.
+RISK: None - additive feature
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+DATE: 2026-01-11
+REASON: Implement SimpleMem-inspired preprocessing (timestamp normalization, entity resolution)
+FILE: note_processor.py (NEW), bot.py, requirements.txt
+LOCATION: New module + add_task/add_note handlers
+CHANGE: Created note_processor.py that:
+        - Converts relative dates ("tomorrow") to absolute ("2026-01-12")
+        - Resolves entity aliases ("the guys" → "Dominique and Nirvan")
+        Applied to both task and note saving. Added dateparser to requirements.
+RISK: Low - additive feature, preprocessing happens before storage
+--------------------------------------------------------------------------------
+
