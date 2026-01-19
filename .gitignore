@@ -1,0 +1,64 @@
+# Environment & Secrets
+.env
+*.env
+.env.*
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+echo_env/
+venv/
+.venv/
+env/
+
+# Logs
+*.log
+.run_all_logs/
+.run_all_pids/
+
+# Models (too large for git)
+models/
+
+# User data
+user_config.json
+user_context.json
+archives/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Node
+node_modules/
+.npm-cache/
+.next/
+
+# Temp files
+tmp_*
+*.tmp
+
+# BetterShift local
+bettershift/BetterShift/.env
+bettershift/BetterShift/node_modules/
+bettershift/BetterShift/.next/
+bettershift/BetterShift/.npm-cache/
+
+# llumen local  
+llumen/backend/target/
+
+# ClueoMCP
+ClueoMCP/node_modules/
+
+# owl_sandbox
+owl_sandbox/

@@ -1,0 +1,10 @@
+# Mauritius Local News Sources
+# One URL per line. Lines starting with # are comments.
+# The bot will scrape headlines from these sites when /news is triggered.
+
+https://lexpress.mu
+https://defimedia.info
+https://lemauricien.com
+https://ionnews.mu
+https://mbcradio.tv
+https://wazaa.mu

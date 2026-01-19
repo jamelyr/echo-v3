@@ -1,0 +1,23 @@
+# Echo V3 Dependencies
+# Run ./setup.sh to install
+
+# HTTP Server
+uvicorn
+starlette
+httpx
+
+# MLX
+mlx
+mlx-lm
+# mlx-embedding-models # Install manually if pip fails
+
+# Audio
+faster-whisper
+
+# News & Aggregation
+feedparser
+aiohttp
+
+# Utilities
+python-dotenv
+python-multipart

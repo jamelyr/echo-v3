@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ECHO V3 // SYSTEM OVERRIDE</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep: #050505;
+            --neon-purple: #bc13fe;
+            --neon-blue: #00f3ff;
+            --neon-pink: #ff0055;
+            --glass: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --text-main: #ffffff;
+            --text-dim: #8888aa;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-deep);
+            color: var(--text-main);
+            font-family: 'Rajdhani', sans-serif;
+            overflow-x: hidden;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Animated Background */
+        .bg-grid {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 200vw;
+            height: 200vh;
+            background-image: 
+                linear-gradient(var(--glass-border) 1px, transparent 1px),
+                linear-gradient(90deg, var(--glass-border) 1px, transparent 1px);
+            background-size: 50px 50px;
+            transform: perspective(500px) rotateX(60deg) translateY(-100px) translateZ(-200px);
+            opacity: 0.2;
+            animation: gridMove 20s linear infinite;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        @keyframes gridMove {
+            0% { transform: perspective(500px) rotateX(60deg) translateY(0) translateZ(-200px); }
+            100% { transform: perspective(500px) rotateX(60deg) translateY(50px) translateZ(-200px); }
+        }
+
+        .ambient-glow {
+            position: fixed;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(188, 19, 254, 0.15), transparent 70%);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: -1;
+            filter: blur(50px);
+            animation: pulse 8s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.5; }
+            50% { transform: translate(-50%, -50%) scale(1.2); opacity: 0.8; }
+        }
+
+        /* Container */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+            width: 100%;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        /* Hero Header */
+        header {
+            text-align: center;
+            margin-bottom: 4rem;
+            position: relative;
+        }
+
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: clamp(3rem, 10vw, 6rem);
+            font-weight: 900;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            background: linear-gradient(180deg, #fff, #888);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 30px rgba(255, 255, 255, 0.1);
+            margin-bottom: 0.5rem;
+            position: relative;
+            display: inline-block;
+        }
+
+        h1::after {
+            content: "V3.0";
+            position: absolute;
+            top: -10px;
+            right: -30px;
+            font-size: 1rem;
+            background: var(--neon-pink);
+            color: #fff;
+            padding: 2px 8px;
+            border-radius: 4px;
+            transform: rotate(10deg);
+            box-shadow: 0 0 10px var(--neon-pink);
+            -webkit-text-fill-color: #fff; /* Reset text fill */
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--neon-blue);
+            border-radius: 50px;
+            color: var(--neon-blue);
+            font-size: 0.9rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.2);
+            background: rgba(0, 243, 255, 0.05);
+            margin-top: 1rem;
+        }
+
+        .blink {
+            width: 8px;
+            height: 8px;
+            background-color: var(--neon-blue);
+            border-radius: 50%;
+            animation: blinker 1.5s linear infinite;
+        }
+
+        @keyframes blinker { 50% { opacity: 0; } }
+
+        /* Dashboard Grid */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            perspective: 1000px;
+        }
+
+        .card {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            padding: 2rem;
+            border-radius: 20px;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            overflow: hidden;
+            text-decoration: none;
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            group: card;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.05), transparent);
+            transform: translateX(-100%);
+            transition: 0.5s;
+        }
+
+        .card:hover {
+            transform: translateY(-10px) scale(1.02);
+            border-color: var(--neon-purple);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(188, 19, 254, 0.2);
+        }
+
+        .card:hover::before {
+            transform: translateX(100%);
+        }
+
+        .card-icon {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            filter: drop-shadow(0 0 10px rgba(255,255,255,0.3));
+        }
+
+        .card h2 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.5rem;
+            color: #fff;
+        }
+
+        .card p {
+            color: var(--text-dim);
+            font-size: 1rem;
+            line-height: 1.5;
+        }
+
+        .card-arrow {
+            margin-top: auto;
+            align-self: flex-end;
+            font-size: 1.5rem;
+            color: var(--neon-purple);
+            opacity: 0;
+            transform: translateX(-20px);
+            transition: all 0.3s ease;
+        }
+
+        .card:hover .card-arrow {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        /* Specific Card Accents */
+        .card.chat:hover { border-color: var(--neon-blue); box-shadow: 0 0 20px rgba(0, 243, 255, 0.2); }
+        .card.chat .card-arrow { color: var(--neon-blue); }
+
+        .card.tasks:hover { border-color: var(--neon-pink); box-shadow: 0 0 20px rgba(255, 0, 85, 0.2); }
+        .card.tasks .card-arrow { color: var(--neon-pink); }
+        
+        .card.archives:hover { border-color: #ff9500; box-shadow: 0 0 20px rgba(255, 149, 0, 0.2); }
+        .card.archives .card-arrow { color: #ff9500; }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-dim);
+            font-size: 0.8rem;
+            letter-spacing: 1px;
+            border-top: 1px solid var(--glass-border);
+            margin-top: auto;
+        }
+
+        /* Glitch Effect Class */
+        .glitch {
+            position: relative;
+        }
+        
+        /* Mobile Optimization */
+        @media (max-width: 768px) {
+            h1 { font-size: 3rem; }
+            .container { padding: 1rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="bg-grid"></div>
+    <div class="ambient-glow"></div>
+
+    <div class="container">
+        <header>
+            <h1>ECHO</h1>
+            <div class="status-badge">
+                <span class="blink"></span>
+                System Online
+            </div>
+        </header>
+
+        <div class="grid">
+            <a href="/" class="card chat">
+                <div class="card-icon">💬</div>
+                <h2>Neural Link</h2>
+                <p>Direct interface with the core AI. Engage in conversation, query data, and explore the knowledge base.</p>
+                <div class="card-arrow">→</div>
+            </a>
+
+            <a href="/tasks" class="card tasks">
+                <div class="card-icon">✅</div>
+                <h2>Mission Control</h2>
+                <p>Track objectives, manage priorities, and execute protocols. Stay organized and efficient.</p>
+                <div class="card-arrow">→</div>
+            </a>
+
+            <a href="/memory" class="card memory">
+                <div class="card-icon">🧠</div>
+                <h2>Core Memory</h2>
+                <p>Access stored data logs[thoughts] and historical records. Review past interactions and insights.</p>
+                <div class="card-arrow">→</div>
+            </a>
+            
+            <a href="/schedule" class="card schedule">
+                <div class="card-icon">📆</div>
+                <h2>Chrono Sync</h2>
+                <p>Manage temporal commitments and shift schedules. Synchronize with BetterShift protocol.</p>
+                <div class="card-arrow">→</div>
+            </a>
+            
+            <a href="/archives" class="card archives">
+                <div class="card-icon">🗄️</div>
+                <h2>Archives</h2>
+                <p>Access historical records, past conversations, and completed missions log.</p>
+                <div class="card-arrow">→</div>
+            </a>
+        </div>
+    </div>
+
+    <footer>
+        <p>ECHO SYSTEM V3 // AUTHORIZED PERSONNEL ONLY // 2026</p>
+    </footer>
+
+    <script>
+        // Simple tilt effect for cards
+        document.querySelectorAll('.card').forEach(card => {
+            card.addEventListener('mousemove', e => {
+                const rect = card.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                card.style.setProperty('--x', `${x}px`);
+                card.style.setProperty('--y', `${y}px`);
+            });
+        });
+    </script>
+</body>
+</html>
