@@ -990,6 +990,20 @@ async def execute_tool(name, args):
                     for shift in shifts:
                         start_time = shift.get('startTime', '')
                         end_time = shift.get('endTime', '')
+                        is_all_day = shift.get('isAllDay', False)
+                        title = shift.get('title', '').lower()
+                        color = shift.get('color', '')
+                        
+                        # Handle all-day shifts (Off, Leave, Vacation, etc.)
+                        if is_all_day or not (start_time and end_time):
+                            # All-day shifts: Off, Leave, Vacation, etc.
+                            title = shift.get('title', '').lower()
+                            if 'off' in title or 'leave' in title or 'vacation' in title or 'paternity' in title:
+                                status = "Off"
+                            else:
+                                status = "Active"
+                            time_info = "all day"
+                            break
                         
                         if start_time and end_time:
                             # Check if currently active
