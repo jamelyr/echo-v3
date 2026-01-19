@@ -983,6 +983,7 @@ def render_chat_view(history):
                     </button>
                     <button 
                         hx-post="/chat/archive" 
+                        hx-confirm="Archive current chat and clear history? This will save the chat to a file and start fresh."
                         hx-target="#messages" 
                         hx-swap="innerHTML"
                         style="background: rgba(255, 0, 85, 0.1); border: 1px solid var(--neon-pink); color: var(--neon-pink); padding: 0.4rem 0.8rem; border-radius: 8px; cursor: pointer; font-family: 'Rajdhani', sans-serif; font-size: 0.85rem; font-weight: 500; transition: all 0.3s;"
@@ -1390,16 +1391,35 @@ def render_archives_view(query=""):
     # Filter if query
     if query:
         query = query.lower()
-        files = [f for f in files if query in f.lower() or query in open(f).read().lower()]
+        # Filter files with error handling
+        filtered_files = []
+        for f in files:
+            try:
+                if query in f.lower() or query in open(f, 'r', encoding='utf-8').read().lower():
+                    filtered_files.append(f)
+            except Exception:
+                # Skip files that can't be read
+                continue
+        files = filtered_files
         archived_tasks = [t for t in archived_tasks if query in t['description'].lower()]
         
     # Render File List
     file_html = ""
     for f in files:
         name = os.path.basename(f)
+        
+        # Read file content with error handling
+        try:
+            with open(f, 'r', encoding='utf-8') as file:
+                content = file.read()
+        except Exception as e:
+            content = f"[Error reading file: {e}]"
+        
+        # Create safe ID by replacing dots with underscores (dots break CSS selectors)
+        safe_id = name.replace('.', '_')
         file_html += f'''
-            <div id="archive-file-{name}">
-                <div class="info-card" onclick="toggleFile('{name}')" style="cursor:pointer; position:relative;">
+            <div id="archive-file-{safe_id}">
+                <div class="info-card" onclick="toggleFile('{safe_id}')" style="cursor:pointer; position:relative;">
                     <div class="nav-icon">📄</div>
                     <div class="nav-text" style="flex:1;">
                         <div class="nav-title">{name}</div>
@@ -1407,7 +1427,8 @@ def render_archives_view(query=""):
                     </div>
                     <button 
                         hx-delete="/archives/delete/file/{name}" 
-                        hx-target="#archive-file-{name}" 
+                        hx-confirm="Delete this archive?"
+                        hx-target="#archive-file-{safe_id}" 
                         hx-swap="outerHTML"
                         onclick="event.stopPropagation()"
                         style="background:rgba(255,0,85,0.1); border:1px solid var(--neon-pink); color:var(--neon-pink); padding:0.4rem 0.8rem; border-radius:8px; cursor:pointer; font-size:0.8rem; transition:all 0.3s; flex-shrink:0;"
@@ -1416,8 +1437,8 @@ def render_archives_view(query=""):
                         🗑️
                     </button>
                 </div>
-                <div id="file-{name}" style="display:none; background:var(--glass); padding:1rem; margin-bottom:0.8rem; border-radius:12px; font-family:monospace; font-size:0.8rem; white-space:pre-wrap; color:var(--text-dim); border:1px solid var(--glass-border);">
-                    {open(f).read()}
+                <div id="file-{safe_id}" style="display:none; background:var(--glass); padding:1rem; margin-bottom:0.8rem; border-radius:12px; font-family:monospace; font-size:0.8rem; white-space:pre-wrap; color:var(--text-dim); border:1px solid var(--glass-border);">
+                    {content}
                 </div>
             </div>'''
         
@@ -2010,10 +2031,14 @@ async def delete_archive_file(request):
     """Delete an archive file"""
     filename = request.path_params['filename']
     try:
+        # Security check: Use basename to prevent path traversal (handles URL encoding too)
+        filename = os.path.basename(filename)
+        
+        # Additional validation: only allow .txt files
+        if not filename.endswith('.txt'):
+            return HTMLResponse(f'<div style="color:var(--neon-pink);">Invalid file type</div>', status_code=400)
+        
         filepath = os.path.join("archives", filename)
-        # Security check: ensure filename doesn't contain path traversal
-        if ".." in filename or "/" in filename:
-            return HTMLResponse(f'<div style="color:var(--neon-pink);">Invalid filename</div>', status_code=400)
         
         if os.path.exists(filepath):
             os.remove(filepath)
@@ -2136,8 +2161,8 @@ async def archive_chat(request):
         # Clear the database chat history for this session
         database.clear_chat_history(sid)
         
-        # Archive completed tasks (move to archive or delete)
-        database.delete_completed_tasks()
+        # Archive completed tasks (mark as 'archived' instead of deleting)
+        database.archive_completed_tasks()
         
         # Clear the in-memory session
         if sid in SESSIONS:

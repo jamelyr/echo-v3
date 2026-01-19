@@ -12,7 +12,7 @@ import ast
 import pytz
 import time
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional, Dict
 from dotenv import load_dotenv
 
@@ -745,23 +745,17 @@ async def execute_tool(name, args):
         elif name == "get_news":
             topic = args[0] if args else None
             # Re-use logic from aggregator
-            # Note: News aggregator is async
+            # Note: News aggregator is async and returns formatted string
             if "week" in (topic or "").lower():
-                news_list = await news_aggregator.get_weekly_news()
+                news_text = await news_aggregator.get_weekly_news()
             else:
-                news_list = await news_aggregator.get_daily_news(topic)
+                news_text = await news_aggregator.get_daily_news(topic)
             
-            # Format news for better LLM context and follow-ups
-            if not news_list:
+            # news_aggregator returns pre-formatted string, just truncate and return
+            if not news_text:
                 return "No news available at this time."
             
-            formatted = "📅 Daily News Headlines:\n"
-            for i, item in enumerate(news_list[:10], 1):
-                headline = item.get('headline', 'Unknown headline') if isinstance(item, dict) else str(item)
-                source = item.get('source', 'Unknown source') if isinstance(item, dict) else 'News'
-                formatted += f"{i}. [{source}] {headline}\n"
-            
-            return _truncate_context(formatted, max_lines=50)
+            return _truncate_context(news_text, max_lines=50)
             
         elif name == "sleep_mode":
             subprocess.run(["pkill", "-f", "mlx_server.py"], check=False)
@@ -799,7 +793,9 @@ async def execute_tool(name, args):
             if not args:
                 return "Error: calendar_id is required."
             calendar_id = args[0]
-            date = args[1] if len(args) > 1 else None
+            date_raw = args[1] if len(args) > 1 else None
+            # Parse date (convert "tomorrow", "wednesday", etc. to YYYY-MM-DD)
+            date = parse_date(date_raw) if date_raw else None
             shifts = await bettershift_client.list_shifts(calendar_id, date)
             if not shifts:
                 return "No shifts found."
