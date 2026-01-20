@@ -11,13 +11,16 @@ MLX_PID_FILE="$PID_DIR/mlx.pid"
 WEB_PID_FILE="$PID_DIR/web.pid"
 BETTERSHIFT_PID_FILE="$PID_DIR/bettershift.pid"
 WEBCTL_PID_FILE="$PID_DIR/webctl.pid"
+WYGIWYH_PID_FILE="$PID_DIR/wygiwyh.pid"
 
 MLX_LOG="$LOG_DIR/mlx_server.log"
 WEB_LOG="$LOG_DIR/web_server.log"
 BETTERSHIFT_LOG="$LOG_DIR/bettershift.log"
 WEBCTL_LOG="$LOG_DIR/webctl.log"
+WYGIWYH_LOG="$LOG_DIR/wygiwyh.log"
 
 BETTERSHIFT_DIR="$ROOT_DIR/bettershift/BetterShift"
+WYGIWYH_DIR="$ROOT_DIR/wygiwyh"
 
 mkdir -p "$PID_DIR" "$LOG_DIR"
 
@@ -86,12 +89,24 @@ start_services() {
     echo "⚠️ BetterShift directory not found at $BETTERSHIFT_DIR"
   fi
 
+  # Start WYGIWYH finance tracker
+  if [ -d "$WYGIWYH_DIR" ]; then
+    echo "💰 Starting WYGIWYH finance tracker..."
+    pushd "$WYGIWYH_DIR" >/dev/null
+    nohup python manage.py runserver 0.0.0.0:8000 > "$WYGIWYH_LOG" 2>&1 &
+    echo $! > "$WYGIWYH_PID_FILE"
+    popd >/dev/null
+  else
+    echo "⚠️ WYGIWYH directory not found at $WYGIWYH_DIR (optional)"
+  fi
+
   echo ""
   echo "✅ Services running"
   echo "   🌐 webctl daemon: started (unattended mode)"
   echo "   🧠 MLX API:  http://127.0.0.1:1234"
   echo "   🌐 Echo UI:  http://127.0.0.1:5001"
   echo "   📆 BetterShift: http://127.0.0.1:3000"
+  echo "   💰 WYGIWYH: http://127.0.0.1:8000"
 }
 
 stop_services() {
@@ -114,6 +129,10 @@ stop_services() {
     kill "$(cat "$BETTERSHIFT_PID_FILE")" 2>/dev/null || true
     rm -f "$BETTERSHIFT_PID_FILE"
   fi
+  if is_running "$WYGIWYH_PID_FILE"; then
+    kill "$(cat "$WYGIWYH_PID_FILE")" 2>/dev/null || true
+    rm -f "$WYGIWYH_PID_FILE"
+  fi
 
   # Also kill any orphaned processes
   pkill -f "mlx_server.py" 2>/dev/null || true
@@ -121,6 +140,7 @@ stop_services() {
   pkill -f "next dev" 2>/dev/null || true
   pkill -f "next-server" 2>/dev/null || true
   pkill -f "webctl" 2>/dev/null || true
+  pkill -f "manage.py runserver" 2>/dev/null || true
 
   echo "✅ Stopped."
 }
@@ -149,6 +169,12 @@ status_services() {
     echo "📆 BetterShift: running (pid $(cat "$BETTERSHIFT_PID_FILE"))"
   else
     echo "📆 BetterShift: stopped"
+  fi
+
+  if is_running "$WYGIWYH_PID_FILE"; then
+    echo "💰 WYGIWYH: running (pid $(cat "$WYGIWYH_PID_FILE"))"
+  else
+    echo "💰 WYGIWYH: stopped"
   fi
 }
 

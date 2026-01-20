@@ -17,6 +17,7 @@ import llm_client
 import httpx
 import bettershift_proxy
 import bettershift_client
+import finance_dashboard
 
 # Initialize DB
 database.init_db()
@@ -59,6 +60,7 @@ def startup():
 
 
 # ============ CSS & ASSETS ============
+# ============ CSS & ASSETS ============
 CSS = """
 /* Echo V3 - Premium Cyberpunk Neural Interface */
 /* Designed by Antigravity */
@@ -99,6 +101,180 @@ body {
     height: 100vh;
     position: relative;
 }
+
+/* --- GLOBAL LAYOUT --- */
+.page-container {
+    padding: 2rem 3rem;
+    max-width: 1600px;
+    margin: 0 auto;
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+}
+
+/* --- PREMIUM CARD STYLES (Global) --- */
+.task-card, .memory-card, .calendar-card, .archive-card, .info-card {
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    position: relative;
+    backdrop-filter: blur(20px);
+    transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+    display: flex;
+    align-items: center;
+    gap: 1.2rem;
+    box-shadow: 0 4px 30px rgba(0,0,0,0.1);
+}
+
+.task-card:hover, .memory-card:hover, .calendar-card:hover, .archive-card:hover, .info-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+    background: rgba(255,255,255,0.03);
+}
+
+/* Specific Border Accents on Hover */
+.task-card:hover { border-color: var(--neon-purple); }
+.memory-card:hover { border-color: var(--neon-blue); }
+.calendar-card:hover { border-color: var(--neon-yellow); }
+.archive-card:hover { border-color: var(--neon-pink); }
+.info-card:hover { border-color: var(--neon-green); }
+
+/* Typography */
+.card-title, .nav-title, .task-text {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.1rem;
+    color: #fff;
+    letter-spacing: 1px;
+    margin-bottom: 0.2rem;
+}
+
+.card-desc, .nav-desc {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 0.9rem;
+    color: var(--text-dim);
+}
+
+/* Grid Layouts */
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+/* Form Elements */
+input[type="text"], input[type="search"], textarea {
+    width: 100%;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--glass-border);
+    padding: 1.2rem;
+    border-radius: 12px;
+    color: #fff;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 1.1rem;
+    outline: none;
+    transition: all 0.3s ease;
+}
+
+input[type="text"]:focus, input[type="search"]:focus, textarea:focus {
+    border-color: var(--neon-blue);
+    box-shadow: 0 0 20px rgba(0, 243, 255, 0.1);
+    background: rgba(255,255,255,0.05);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--neon-blue); }
+
+/* --- GLOBAL LAYOUT --- */
+.page-container {
+    padding: 2rem 3rem;
+    max-width: 1600px;
+    margin: 0 auto;
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+}
+
+/* --- PREMIUM CARD STYLES (Global) --- */
+.task-card, .memory-card, .calendar-card, .archive-card, .info-card {
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    position: relative;
+    backdrop-filter: blur(20px);
+    transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+    display: flex;
+    align-items: center;
+    gap: 1.2rem;
+    box-shadow: 0 4px 30px rgba(0,0,0,0.1);
+}
+
+.task-card:hover, .memory-card:hover, .calendar-card:hover, .archive-card:hover, .info-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+    background: rgba(255,255,255,0.03);
+}
+
+/* Specific Border Accents on Hover */
+.task-card:hover { border-color: var(--neon-purple); }
+.memory-card:hover { border-color: var(--neon-blue); }
+.calendar-card:hover { border-color: var(--neon-yellow); }
+.archive-card:hover { border-color: var(--neon-pink); }
+.info-card:hover { border-color: var(--neon-green); }
+
+/* Typography */
+.card-title, .nav-title, .task-text {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.1rem;
+    color: #fff;
+    letter-spacing: 1px;
+    margin-bottom: 0.2rem;
+}
+
+.card-desc, .nav-desc {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 0.9rem;
+    color: var(--text-dim);
+}
+
+/* Grid Layouts */
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+/* Form Elements */
+input[type="text"], input[type="search"], textarea {
+    width: 100%;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--glass-border);
+    padding: 1.2rem;
+    border-radius: 12px;
+    color: #fff;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 1.1rem;
+    outline: none;
+    transition: all 0.3s ease;
+}
+
+input[type="text"]:focus, input[type="search"]:focus, textarea:focus {
+    border-color: var(--neon-blue);
+    box-shadow: 0 0 20px rgba(0, 243, 255, 0.1);
+    background: rgba(255,255,255,0.05);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--neon-blue); }
 
 /* Noise Overlay */
 body::before {
@@ -715,6 +891,7 @@ def get_base_html(active_tab, content, session_id):
                 {nav_link("Neural Link", "AI Chat Interface", "💬", "/", "chat")}
                 {nav_link("Mission Control", "Task Management", "✅", "/tasks", "tasks")}
                 {nav_link("Core Memory", "Data Logs", "🧠", "/memory", "memory")}
+                {nav_link("Treasury", "Finance Tracker", "💰", "/finance", "finance")}
                 {nav_link("Chrono Sync", "BetterShift Protocol", "📆", "/schedule", "schedule")}
                 {nav_link("Archives", "Historical Records", "🗄️", "/archives", "archives")}
             </nav>
@@ -967,7 +1144,7 @@ def render_tasks_view():
     tasks = [t for t in database.get_tasks() if t['status'] != 'archived']
     list_html = ""
     if not tasks:
-        list_html = '<div style="text-align:center; color:var(--text-dim); margin-top:4rem">All caught up! 🎉</div>'
+        list_html = '<div style="text-align:center; color:var(--text-dim); margin-top:4rem; font-family:\'Rajdhani\'; font-size:1.2rem;">All systems nominal. No active tasks.</div>'
     
     for t in tasks:
         status = "completed" if t['status'] == 'completed' else ""
@@ -978,23 +1155,33 @@ def render_tasks_view():
                        hx-post="/tasks/toggle/{t['id']}" 
                        hx-target="#task-{t['id']}" 
                        hx-swap="outerHTML"
-                       {checked}>
-                <div class="task-text">{t['description']}</div>
+                       {checked}
+                       style="accent-color:var(--neon-purple); width:20px; height:20px; cursor:pointer; margin-right:1rem;">
+                <div class="task-text" style="flex:1;">{t['description']}</div>
             </div>'''
         
     return f'''
+            <style>
+                .task-card.completed {{ opacity: 0.6; border-color: rgba(255,255,255,0.05); }}
+                .task-card.completed .task-text {{ text-decoration: line-through; color: var(--text-dim); }}
+            </style>
             <div class="chat-header">
                 <div>
-                    <div class="chat-title">Mission Control</div>
+                    <div class="chat-title" style="color:var(--neon-purple);">Mission Control</div>
                     <div class="chat-subtitle">Task Management System</div>
                 </div>
-                <span hx-get="/tasks" hx-select=".main-content" hx-target=".main-content" 
-                      style="cursor:pointer; font-size:1.2rem; opacity:0.7" title="Refresh">🔄</span>
+                <div style="display:flex; gap:1rem; align-items:center;">
+                    <span hx-get="/tasks" hx-select=".main-content" hx-target=".main-content" 
+                          style="cursor:pointer; font-size:1.2rem; opacity:0.7; transition:0.3s;" 
+                          onmouseover="this.style.opacity='1'; this.style.transform='rotate(180deg)'"
+                          onmouseout="this.style.opacity='0.7'; this.style.transform='rotate(0deg)'"
+                          title="Refresh">🔄</span>
+                </div>
             </div>
             
             <div class="page-container">
                 <form hx-post="/tasks/add" hx-target="#task-list" hx-swap="afterbegin" onsubmit="setTimeout(()=>this.reset(), 10)">
-                    <input type="text" name="desc" placeholder="+ Add a new task..." style="margin-bottom: 2rem;">
+                    <input type="text" name="desc" placeholder="+ Add new objective..." style="margin-bottom: 2rem;">
                 </form>
                 
                 <div id="task-list">{list_html}</div>
@@ -1006,43 +1193,54 @@ def render_schedule_view(calendars=None, error=None):
     calendars = calendars or []
     cal_list = ""
     if error:
-        cal_list = f'<div style="color:var(--neon-pink); padding:1rem;">{error}</div>'
+        cal_list = f'<div style="background:rgba(255,0,85,0.1); border:1px solid var(--neon-pink); padding:1rem; border-radius:12px; color:var(--neon-pink); display:flex; gap:1rem; align-items:center;"><div>⚠️</div><div>{error}</div></div>'
     elif not calendars:
-        cal_list = '<div style="color:var(--text-dim); text-align:center; margin-top:2rem;">No calendars found.</div>'
+        cal_list = '<div style="color:var(--text-dim); text-align:center; margin-top:4rem; font-family:\'Rajdhani\';">No active calendars detected.</div>'
     else:
-        # Ensure calendars is a list of dicts, not strings or other types
+        # Ensure calendars is a list of dicts
         if isinstance(calendars, str):
-            cal_list = f'<div style="color:var(--neon-pink); padding:1rem;">Error: {calendars}</div>'
+            cal_list = f'<div style="background:rgba(255,0,85,0.1); border:1px solid var(--neon-pink); padding:1rem; border-radius:12px; color:var(--neon-pink);">Error: {calendars}</div>'
         else:
             cal_items = []
             for c in calendars:
-                # Handle both dict and non-dict items
                 if isinstance(c, dict):
                     name = c.get('name', 'Unknown')
                     cal_id = c.get('id', 'Unknown')
+                    color = c.get('backgroundColor', '#333')
                 else:
                     name = str(c)
                     cal_id = ''
+                    color = '#333'
                     
-                cal_items.append(f'''<div class="info-card">
-                    <div class="nav-icon">📅</div>
-                    <div class="nav-text">
-                        <div class="nav-title">{name}</div>
-                        <div class="nav-desc">{cal_id}</div>
+                cal_items.append(f'''
+                <div class="calendar-card">
+                    <div style="position:absolute; top:0; left:0; width:4px; height:100%; background:{color}; box-shadow:0 0 10px {color};"></div>
+                    <div style="width:100%">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div class="nav-icon" style="font-size:2rem; filter:drop-shadow(0 0 8px rgba(255,255,255,0.2));">📆</div>
+                            <div style="font-size:0.7rem; color:var(--text-dim); border:1px solid var(--glass-border); padding:0.2rem 0.6rem; border-radius:20px;">ACTIVE</div>
+                        </div>
+                        <div style="margin-top:0.5rem;">
+                            <div class="card-title" style="margin-bottom:0.3rem;">{name}</div>
+                            <div class="card-desc">{cal_id}</div>
+                        </div>
+                        <div class="glow-effect" style="position:absolute; bottom:-20px; right:-20px; width:100px; height:100px; background:{color}; filter:blur(50px); opacity:0.15; pointer-events:none;"></div>
                     </div>
                 </div>''')
-            cal_list = f"<div style='display:grid; gap:0.75rem'>{''.join(cal_items)}</div>"
+            cal_list = f"<div class='card-grid'>{list(cal_items)}</div>".replace("['", "").replace("']", "").replace("', '", "")
 
     return f'''
             <div class="chat-header">
                 <div>
-                    <div class="chat-title">Chrono Sync</div>
-                    <div class="chat-subtitle">BetterShift Protocol</div>
+                    <div class="chat-title" style="color:var(--neon-yellow);">Chrono Sync</div>
+                    <div class="chat-subtitle">BetterShift Protocol Interface</div>
                 </div>
             </div>
             
             <div class="page-container">
-                <p style="color:var(--text-dim); margin-bottom:2rem;">Use the Neural Link to create shifts, presets, and notes.</p>
+                <p style="color:var(--text-dim); margin-bottom:2rem; font-family:'Rajdhani'; font-size:1.1rem; border-left:2px solid var(--neon-yellow); padding-left:1rem;">
+                    Synchronized with external calendar systems.
+                </p>
                 {cal_list}
             </div>
     '''
@@ -1070,31 +1268,37 @@ def render_memory_view():
     
     notes_html = ''
     if not notes:
-        notes_html = '<div style="text-align:center; color:var(--text-dim); margin-top:2rem;">No memories stored yet.</div>'
+        notes_html = '<div style="text-align:center; color:var(--text-dim); margin-top:4rem; font-family:\'Rajdhani\';">Memory banks empty. No records found.</div>'
     else:
         for n in notes:
             notes_html += f'''
-                <div class="info-card" id="note-{n['id']}" style="position:relative;">
-                    <div class="nav-icon">💭</div>
-                    <div class="nav-text" style="flex:1;">
-                        <div style="font-size:0.95rem; line-height:1.5;">{n['content']}</div>
-                        <div class="nav-desc" style="margin-top:0.5rem;">{n['created_at'][:10]}</div>
+                <div class="memory-card" id="note-{n['id']}">
+                    <div style="display:flex; gap:1rem; align-items:flex-start;">
+                        <div style="font-size:1.5rem; filter:drop-shadow(0 0 5px rgba(255,255,255,0.2));">🧠</div>
+                        <div style="flex:1;">
+                            <div style="font-size:1rem; line-height:1.6; color:var(--text-main); font-weight:300;">{n['content']}</div>
+                            <div style="margin-top:0.8rem; font-size:0.75rem; color:var(--text-dim); text-transform:uppercase; letter-spacing:1px; display:flex; align-items:center; gap:0.5rem;">
+                                <span>DATALOG: {n['created_at'][:10]}</span>
+                                <span style="width:4px; height:4px; background:var(--text-dim); border-radius:50%;"></span>
+                                <span>ID: {n['id']}</span>
+                            </div>
+                        </div>
+                        <button 
+                            hx-delete="/memory/delete/{n['id']}" 
+                            hx-target="#note-{n['id']}" 
+                            hx-swap="outerHTML"
+                            style="background:rgba(255,0,85,0.1); border:1px solid var(--neon-pink); color:var(--neon-pink); padding:0.4rem; border-radius:8px; cursor:pointer; font-size:0.9rem; transition:all 0.2s; opacity:0; transform:translateX(10px);"
+                            onmouseover="this.style.background='rgba(255,0,85,0.2)'; this.style.boxShadow='0 0 10px rgba(255,0,85,0.2)'"
+                            onmouseout="this.style.background='rgba(255,0,85,0.1)'; this.style.boxShadow='none'">
+                            🗑️
+                        </button>
                     </div>
-                    <button 
-                        hx-delete="/memory/delete/{n['id']}" 
-                        hx-target="#note-{n['id']}" 
-                        hx-swap="outerHTML"
-                        style="background:rgba(255,0,85,0.1); border:1px solid var(--neon-pink); color:var(--neon-pink); padding:0.4rem 0.8rem; border-radius:8px; cursor:pointer; font-size:0.8rem; transition:all 0.3s; flex-shrink:0;"
-                        onmouseover="this.style.background='rgba(255,0,85,0.2)'"
-                        onmouseout="this.style.background='rgba(255,0,85,0.1)'">
-                        🗑️
-                    </button>
                 </div>'''
     
     return f'''
             <div class="chat-header">
                 <div>
-                    <div class="chat-title">Core Memory</div>
+                    <div class="chat-title" style="color:var(--neon-blue);">Core Memory</div>
                     <div class="chat-subtitle">Data Logs & Stored Thoughts</div>
                 </div>
             </div>
@@ -1214,6 +1418,10 @@ async def schedule_page(request):
     except Exception as e:
         return HTMLResponse(get_base_html("schedule", render_schedule_view(error=str(e)), ""))
 
+async def finance_page(request):
+    content = await finance_dashboard.render_finance_view()
+    return HTMLResponse(get_base_html("finance", content, ""))
+
 # --- Archives View ---
 
 def render_archives_view(query=""):
@@ -1234,7 +1442,6 @@ def render_archives_view(query=""):
                 if query in f.lower() or query in open(f, 'r', encoding='utf-8').read().lower():
                     filtered_files.append(f)
             except Exception:
-                # Skip files that can't be read
                 continue
         files = filtered_files
         archived_tasks = [t for t in archived_tasks if query in t['description'].lower()]
@@ -1243,23 +1450,20 @@ def render_archives_view(query=""):
     file_html = ""
     for f in files:
         name = os.path.basename(f)
-        
-        # Read file content with error handling
         try:
             with open(f, 'r', encoding='utf-8') as file:
                 content = file.read()
         except Exception as e:
             content = f"[Error reading file: {e}]"
         
-        # Create safe ID by replacing dots with underscores (dots break CSS selectors)
         safe_id = name.replace('.', '_')
         file_html += f'''
-            <div id="archive-file-{safe_id}">
-                <div class="info-card" onclick="toggleFile('{safe_id}')" style="cursor:pointer; position:relative;">
-                    <div class="nav-icon">📄</div>
-                    <div class="nav-text" style="flex:1;">
-                        <div class="nav-title">{name}</div>
-                        <div class="nav-desc">Click to expand</div>
+            <div id="archive-file-{safe_id}" class="archive-card">
+                <div class="info-card" onclick="toggleFile('{safe_id}')" style="cursor:pointer; width:100%; border:none; background:none; padding:0; box-shadow:none; margin:0;">
+                    <div style="background:rgba(0,243,255,0.1); width:40px; height:40px; border-radius:8px; display:flex; align-items:center; justify-content:center; color:var(--neon-blue);">📄</div>
+                    <div style="flex:1;">
+                        <div class="card-title">{name}</div>
+                        <div class="card-desc">Click to expand</div>
                     </div>
                     <button 
                         hx-delete="/archives/delete/file/{name}" 
@@ -1267,60 +1471,70 @@ def render_archives_view(query=""):
                         hx-target="#archive-file-{safe_id}" 
                         hx-swap="outerHTML"
                         onclick="event.stopPropagation()"
-                        style="background:rgba(255,0,85,0.1); border:1px solid var(--neon-pink); color:var(--neon-pink); padding:0.4rem 0.8rem; border-radius:8px; cursor:pointer; font-size:0.8rem; transition:all 0.3s; flex-shrink:0;"
-                        onmouseover="this.style.background='rgba(255,0,85,0.2)'"
-                        onmouseout="this.style.background='rgba(255,0,85,0.1)'">
+                        style="background:rgba(255,0,85,0.1); border:1px solid var(--neon-pink); color:var(--neon-pink); padding:0.5rem; border-radius:8px; cursor:pointer; transition:all 0.3s; opacity:0; transform:translateX(10px);"
+                        class="delete-btn">
                         🗑️
                     </button>
                 </div>
-                <div id="file-{safe_id}" style="display:none; background:var(--glass); padding:1rem; margin-bottom:0.8rem; border-radius:12px; font-family:monospace; font-size:0.8rem; white-space:pre-wrap; color:var(--text-dim); border:1px solid var(--glass-border);">
+                <div id="file-{safe_id}" style="display:none; width:100%; margin-top:1rem; background:rgba(0,0,0,0.3); padding:1.5rem; border-radius:12px; font-family:'Rajdhani', monospace; font-size:0.9rem; white-space:pre-wrap; color:var(--text-dim); border:1px solid var(--glass-border); box-shadow:inset 0 0 20px rgba(0,0,0,0.5);">
                     {content}
                 </div>
             </div>'''
         
-    # Render Task List definition
+    # Render Task List
     task_html = ""
     for t in archived_tasks:
         task_html += f'''
-            <div class="task-card completed" id="archived-task-{t['id']}" style="opacity:0.6">
-                <div class="checkbox" style="background:var(--neon-purple); border-color:var(--neon-purple);">✓</div>
-                <div class="task-text" style="flex:1;">
+            <div class="task-card completed" id="archived-task-{t['id']}">
+                <div style="width:20px; height:20px; background:var(--neon-purple); border-radius:4px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:0.8rem;">✓</div>
+                <div class="task-text" style="flex:1; color:var(--text-dim); text-decoration:line-through;">
                     {t['description']} 
-                    <span style="font-size:0.75em; color:var(--text-dim);">({t.get('completed_at', 'unknown')})</span>
+                    <span style="font-size:0.75em; display:block; margin-top:0.2rem; opacity:0.7;">Completed: {t.get('completed_at', 'unknown')}</span>
                 </div>
                 <button 
                     hx-delete="/archives/delete/task/{t['id']}" 
                     hx-target="#archived-task-{t['id']}" 
                     hx-swap="outerHTML"
-                    style="background:rgba(255,0,85,0.1); border:1px solid var(--neon-pink); color:var(--neon-pink); padding:0.4rem 0.8rem; border-radius:8px; cursor:pointer; font-size:0.8rem; transition:all 0.3s; flex-shrink:0;"
-                    onmouseover="this.style.background='rgba(255,0,85,0.2)'"
-                    onmouseout="this.style.background='rgba(255,0,85,0.1)'">
+                    style="background:rgba(255,0,85,0.1); border:1px solid var(--neon-pink); color:var(--neon-pink); padding:0.4rem; border-radius:8px; cursor:pointer; opacity:0.5; transition:0.3s;"
+                    onmouseover="this.style.opacity='1'"
+                    onmouseout="this.style.opacity='0.5'">
                     🗑️
                 </button>
             </div>'''
         
     return f'''
+            <style>
+                .archive-card {{ flex-direction: column; align-items: stretch; }}
+                .archive-card:hover .delete-btn {{
+                    opacity: 1 !important;
+                    transform: translateX(0) !important;
+                }}
+            </style>
             <div class="chat-header">
                 <div>
-                    <div class="chat-title">Archives</div>
-                    <div class="chat-subtitle">Historical Records</div>
+                    <div class="chat-title" style="color:#fff;">Archives</div>
+                    <div class="chat-subtitle">Historical Records & Logs</div>
                 </div>
             </div>
             
             <div class="page-container">
-                <input type="text" name="q" placeholder="🔍 Search archives..." 
+                <input type="text" name="q" placeholder="🔍 Search records..." 
                        hx-get="/archives/search" hx-trigger="keyup changed delay:500ms" hx-target="#archive-content"
                        style="margin-bottom: 2rem;">
                        
                 <div id="archive-content">
-                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:2rem;">
+                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:2rem;">
                         <div>
-                            <h3 style="margin-bottom:1rem; color:var(--neon-blue); font-family:'Orbitron',sans-serif; font-size:1rem;">📂 Chat Logs</h3>
-                            {file_html if file_html else '<div style="color:var(--text-dim);">No files found.</div>'}
+                            <h3 style="margin-bottom:1.5rem; color:var(--neon-blue); font-family:'Orbitron',sans-serif; font-size:1.1rem; letter-spacing:1px; display:flex; align-items:center; gap:0.5rem;">
+                                <span>📂</span> CHAT LOGS
+                            </h3>
+                            {file_html if file_html else '<div style="color:var(--text-dim); padding:2rem; text-align:center; border:1px dashed var(--glass-border); border-radius:12px;">No archival records found.</div>'}
                         </div>
                         <div>
-                            <h3 style="margin-bottom:1rem; color:var(--neon-pink); font-family:'Orbitron',sans-serif; font-size:1rem;">✅ Completed Tasks</h3>
-                            {task_html if task_html else '<div style="color:var(--text-dim);">No archived tasks.</div>'}
+                            <h3 style="margin-bottom:1.5rem; color:var(--neon-purple); font-family:'Orbitron',sans-serif; font-size:1.1rem; letter-spacing:1px; display:flex; align-items:center; gap:0.5rem;">
+                                <span>✅</span> MISSION LOG
+                            </h3>
+                            {task_html if task_html else '<div style="color:var(--text-dim); padding:2rem; text-align:center; border:1px dashed var(--glass-border); border-radius:12px;">No archived objectives.</div>'}
                         </div>
                     </div>
                 </div>
@@ -2031,6 +2245,7 @@ routes = [
     Route("/tasks", tasks_page),
     Route("/memory", memory_page),
     Route("/schedule", schedule_page),
+    Route("/finance", finance_page),
     Route("/archives", archives_page),
     Route("/archives/search", search_archives),
     Route("/archives/delete/file/{filename}", delete_archive_file, methods=["DELETE"]),

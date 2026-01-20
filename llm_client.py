@@ -24,6 +24,7 @@ import context_manager
 import mlx_embeddings
 import bettershift_client
 import bettershift_router
+import wygiwyh_client
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
 MLX_URL = "http://127.0.0.1:1234/v1"
 
@@ -107,6 +108,28 @@ You have access to the following tools:
     - Use this when the user asks about something they told you before.
     - Example: `Tool: recall_notes("door code")`
     - Example: `Tool: recall_notes("favorite pizza")`
+
+16. **finance_balance(account: str = None)**
+    - View current balance across all accounts or a specific account.
+    - Example: `Tool: finance_balance()`
+    - Example: `Tool: finance_balance("Checking")`
+
+17. **finance_add_expense(amount: float, category: str, description: str, account: str = None)**
+    - Record an expense transaction.
+    - Example: `Tool: finance_add_expense(45.50, "Food", "Groceries at supermarket")`
+
+18. **finance_add_income(amount: float, source: str, description: str, account: str = None)**
+    - Record income transaction.
+    - Example: `Tool: finance_add_income(2500, "Salary", "Monthly paycheck")`
+
+19. **finance_summary(period: str = "month")**
+    - Get financial summary (income, expenses, net).
+    - Periods: "week", "month", "year"
+    - Example: `Tool: finance_summary("month")`
+
+20. **finance_transactions(limit: int = 10, category: str = None)**
+    - List recent transactions with optional category filter.
+    - Example: `Tool: finance_transactions(5, "Food")`
 
 FORMAT INSTRUCTIONS:
 - To use a tool, you MUST output: `Tool: tool_name(arguments)`
@@ -1049,6 +1072,37 @@ async def execute_tool(name, args):
                 result += "\n"
             
             return result.strip()
+        
+        elif name == "finance_balance":
+            account_filter = args[0] if args else None
+            return await wygiwyh_client.get_balance_summary(account_filter)
+        
+        elif name == "finance_add_expense":
+            if len(args) < 3:
+                return "Error: finance_add_expense requires amount, category, description"
+            amount = float(args[0])
+            category = args[1]
+            description = args[2]
+            account = args[3] if len(args) > 3 else None
+            return await wygiwyh_client.create_expense(amount, category, description, account)
+        
+        elif name == "finance_add_income":
+            if len(args) < 3:
+                return "Error: finance_add_income requires amount, source, description"
+            amount = float(args[0])
+            source = args[1]
+            description = args[2]
+            account = args[3] if len(args) > 3 else None
+            return await wygiwyh_client.create_income(amount, source, description, account)
+        
+        elif name == "finance_summary":
+            period = args[0] if args else "month"
+            return await wygiwyh_client.get_summary(period)
+        
+        elif name == "finance_transactions":
+            limit = int(args[0]) if args else 10
+            category = args[1] if len(args) > 1 else None
+            return await wygiwyh_client.get_recent_transactions(limit, category)
             
         else:
             return f"Error: Tool '{name}' not found."
