@@ -73,29 +73,29 @@ SHIFT_TYPES: Dict[str, Dict[str, Any]] = {
 # Groups: (1) person, (2) shift_type or date, (3) date if applicable
 
 SHORTCUT_PATTERNS = [
-    # "Nirvan is on SA Wednesday" / "Nirvan is on SA+ tomorrow"
-    (r"(\w+)\s+is\s+on\s+(sa\+?)\s+(?:shift\s+)?(?:on\s+)?(\w+)", "add"),
+    # "Nirvan is on SA Wednesday" / "Nirvan is on SA+ February 15"
+    (r"(\w+)\s+is\s+on\s+(sa\+?)\s+(?:shift\s+)?(?:on\s+)?(.+)", "add"),
     
-    # "Put Dom on SA tomorrow" / "Put Nirvan on SA+ Wednesday"
-    (r"put\s+(\w+)\s+on\s+(sa\+?)\s+(?:shift\s+)?(?:on\s+)?(\w+)", "add"),
+    # "Put Dom on SA tomorrow" / "Put Nirvan on SA+ Feb 20"
+    (r"put\s+(\w+)\s+on\s+(sa\+?)\s+(?:shift\s+)?(?:on\s+)?(.+)", "add"),
     
     # "Add SA shift for Nirvan on Wednesday"
-    (r"add\s+(sa\+?)\s+(?:shift\s+)?for\s+(\w+)\s+(?:on\s+)?(\w+)", "add_reversed"),
+    (r"add\s+(sa\+?)\s+(?:shift\s+)?for\s+(\w+)\s+(?:on\s+)?(.+)", "add_reversed"),
     
-    # "Nirvan is off Wednesday" / "Dom is off tomorrow"
-    (r"(\w+)\s+is\s+off\s+(?:on\s+)?(\w+)", "add_off"),
+    # "Nirvan is off Wednesday" / "Dom is off February 15"
+    (r"(\w+)\s+is\s+off\s+(?:on\s+)?(.+)", "add_off"),
     
-    # "Remove Nirvan's shift on Wednesday" / "Delete Dom's shift tomorrow"
-    (r"(?:remove|delete|cancel)\s+(\w+)(?:'s)?\s+shift\s+(?:on\s+)?(\w+)", "remove"),
+    # "Remove Nirvan's shift on Wednesday" / "Delete Dom's shift Feb 20"
+    (r"(?:remove|delete|cancel)\s+(\w+)(?:'s)?\s+shift\s+(?:on\s+)?(.+)", "remove"),
     
-    # "What are Nirvan's shifts" / "Show Dom's shifts"
-    (r"(?:what\s+are|show|list)\s+(\w+)(?:'s)?\s+shifts?(?:\s+(?:on\s+)?(\w+))?", "list"),
+    # "What are Nirvan's shifts" / "Show Dom's shifts on Feb 15"
+    (r"(?:what\s+are|show|list)\s+(\w+)(?:'s)?\s+shifts?\s+(?:on\s+)?(.+)", "list"),
     
-    # "Who's working today" / "Who is on shift tomorrow"
-    (r"who(?:'s| is)\s+(?:working|on\s+shift)\s+(?:on\s+)?(\w+)", "list_all"),
+    # "Who's working today" / "Who is on shift February 15"
+    (r"who(?:'s| is)\s+(?:working|on\s+shift)\s+(?:on\s+)?(.+)", "list_all"),
     
     # "Nirvan's shifts this week"
-    (r"(\w+)(?:'s)?\s+shifts?\s+(?:this\s+)?(\w+)", "list"),
+    (r"(\w+)(?:'s)?\s+shifts?\s+(?:this\s+)?(.+)", "list"),
 ]
 
 
@@ -186,6 +186,31 @@ def parse_date(date_str: str) -> str:
             current_day = now.weekday()
             days_ahead = target_day - current_day + 7  # Always next week
             return (now + timedelta(days=days_ahead)).strftime("%Y-%m-%d")
+    
+    # Month + day patterns: "February 15", "Jan 20", "march 3rd"
+    months = {
+        "january": 1, "jan": 1, "february": 2, "feb": 2, "march": 3, "mar": 3,
+        "april": 4, "apr": 4, "may": 5, "june": 6, "jun": 6,
+        "july": 7, "jul": 7, "august": 8, "aug": 8, "september": 9, "sep": 9,
+        "october": 10, "oct": 10, "november": 11, "nov": 11, "december": 12, "dec": 12
+    }
+    
+    # Try to parse "Month Day" format
+    month_day_match = re.match(r'(\w+)\s+(\d{1,2})(?:st|nd|rd|th)?', date_str_lower)
+    if month_day_match:
+        month_name = month_day_match.group(1)
+        day = int(month_day_match.group(2))
+        if month_name in months:
+            month = months[month_name]
+            year = now.year
+            # If the date has passed this year, assume next year
+            try:
+                target_date = datetime(year, month, day, tzinfo=tz)
+                if target_date < now:
+                    target_date = datetime(year + 1, month, day, tzinfo=tz)
+                return target_date.strftime("%Y-%m-%d")
+            except ValueError:
+                pass  # Invalid date (e.g., Feb 30)
     
     # Fallback: return as-is (might be a date string)
     return date_str
