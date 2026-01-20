@@ -23,6 +23,7 @@ import news_aggregator
 import context_manager
 import mlx_embeddings
 import bettershift_client
+import bettershift_router
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
 MLX_URL = "http://127.0.0.1:1234/v1"
 
@@ -82,54 +83,30 @@ You have access to the following tools:
     - Use this to visit specific websites, perform deep research, or when 'search_web' is not detailed enough.
     - Example: `Tool: browse_web("Go to YCombinator and summarize top post")`
 
-13. **list_calendars()**
-    - Lists BetterShift calendars available to the user.
-    - Example: `Tool: list_calendars()`
+13. **shift(action: str, person: str, shift_type: str, date: str)**
+    - Manages BetterShift schedules for the team.
+    - Actions: "add", "remove", "list"
+    - People: "Nirvan", "Dom", "Marley", "me", "all"
+    - Shift types: "SA" (15:30-23:30), "SA+" (15:30-01:00), "Off"
+    - Dates: "today", "tomorrow", day names, or YYYY-MM-DD
+    - Examples:
+      `Tool: shift("add", "Nirvan", "SA", "Wednesday")`
+      `Tool: shift("add", "Dom", "SA+", "tomorrow")`
+      `Tool: shift("add", "Nirvan", "Off", "Friday")`
+      `Tool: shift("remove", "Dom", "SA", "Wednesday")`
+      `Tool: shift("list", "Nirvan", None, "today")`
+      `Tool: shift("list", "all", None, "tomorrow")`
 
-14. **list_shifts(calendar_id: str, date: str = None)**
-    - Lists shifts for a calendar, optionally filtered by date (YYYY-MM-DD).
-    - Example: `Tool: list_shifts("calendar-id", "2026-01-16")`
-
-15. **create_shift(calendar_id: str, title: str, date: str, start_time: str = None, end_time: str = None, color: str = None, notes: str = None, is_all_day: bool = False, is_secondary: bool = False, preset_id: str = None)**
-    - Creates a shift entry in BetterShift.
-    - Example: `Tool: create_shift("calendar-id", "Morning Shift", "2026-01-16", "09:00", "17:00")`
-
-16. **list_presets(calendar_id: str)**
-    - Lists shift presets for a calendar.
-    - Example: `Tool: list_presets("calendar-id")`
-
-17. **create_preset(calendar_id: str, title: str, start_time: str = None, end_time: str = None, color: str = None, notes: str = None, is_secondary: bool = False, is_all_day: bool = False, hide_from_stats: bool = False)**
-    - Creates a shift preset for a calendar.
-    - Example: `Tool: create_preset("calendar-id", "Standard Shift", "09:00", "17:00")`
-
-18. **list_notes(calendar_id: str, date: str = None)**
-    - Lists BetterShift notes for a calendar/date.
-    - Example: `Tool: list_notes("calendar-id", "2026-01-16")`
-
-19. **create_note(calendar_id: str, date: str, note: str, note_type: str = "note", color: str = None)**
-    - Adds a calendar note.
-    - Example: `Tool: create_note("calendar-id", "2026-01-16", "On-call")`
-
-20. **delete_preset(preset_id: str)**
-    - Removes a shift preset by ID.
-    - Example: `Tool: delete_preset("preset-id")`
-
-21. **save_note(content: str)**
+14. **save_note(content: str)**
     - Saves a personal note/memory to permanent storage for future recall.
     - Use this when the user asks you to remember something.
     - Example: `Tool: save_note("Door code is 9876")`
 
-22. **recall_notes(query: str)**
+15. **recall_notes(query: str)**
     - Searches your memory for previously saved notes related to the query.
     - Use this when the user asks about something they told you before.
     - Example: `Tool: recall_notes("door code")`
     - Example: `Tool: recall_notes("favorite pizza")`
-
-23. **check_entity_status()**
-    - Checks who is currently on shift/active in BetterShift.
-    - Returns a list of people/entities with their status: "Active", "Upcoming", or "Off"
-    - Use this when the user asks "who is working?", "who's on shift?", or "is anyone available?"
-    - Example: `Tool: check_entity_status()`
 
 FORMAT INSTRUCTIONS:
 - To use a tool, you MUST output: `Tool: tool_name(arguments)`
@@ -167,20 +144,22 @@ Tool: recall_notes("door code")
 Observation: Found 1 note: "Door code is 9876"
 Answer: Your door code is 9876.
 
-EXAMPLE 6 (Multi-Tool / Parallel Execution):
-User: Dom is off tomorrow and Nirvan is off on Wednesday
-Thought: This requires updating two different entities. I need to:
-1. First recall their calendar IDs from memory
-2. Then create shifts for both
-Tool: recall_notes("Dom calendar")
-Observation: Found note: "Dom's BetterShift calendar ID is abc-123"
-Tool: recall_notes("Nirvan calendar")
-Observation: Found note: "Nirvan's BetterShift calendar ID is def-456"
-Tool: create_shift("abc-123", "Off", "tomorrow")
-Observation: ✅ Shift created for Dom
-Tool: create_shift("def-456", "Off", "Wednesday")
-Observation: ✅ Shift created for Nirvan
-Answer: Done! I've marked Dom off for tomorrow and Nirvan off for Wednesday.
+EXAMPLE 6 (BetterShift - Simple):
+User: Nirvan is on SA shift Wednesday
+Thought: I need to add an SA shift for Nirvan on Wednesday.
+Tool: shift("add", "Nirvan", "SA", "Wednesday")
+Observation: ✅ Nirvan is on SA (15:30-23:30) on 2026-01-22
+Answer: Done! Nirvan is scheduled for SA shift on Wednesday.
+
+EXAMPLE 7 (BetterShift - Who's Working):
+User: Who's working tomorrow?
+Thought: I need to check the schedule for tomorrow.
+Tool: shift("list", "all", None, "tomorrow")
+Observation: 📅 Who's working on 2026-01-21:
+  • Nirvan: SA (15:30-23:30)
+  • Dom: Off
+  • Marley: Off
+Answer: Tomorrow Nirvan is on SA shift (15:30-23:30). Dom and Marley are off.
 """
 
 # --- CORE AGENT LOOP ---
@@ -218,8 +197,13 @@ async def process_input(user_input, user_id="default", history=[]):
         observation = await execute_tool("get_news", [topic] if topic else [])
         return observation
 
-    # Fast-path: BetterShift queries fallback
+    # Fast-path: BetterShift queries - use smart router (handles entity resolution)
     if _looks_like_bettershift_query(user_input):
+        # First try the new smart router (handles "Nirvan is on SA Wednesday" etc.)
+        smart_result = await bettershift_router.try_handle_bettershift(user_input)
+        if smart_result is not None:
+            return smart_result
+        # Fallback to old direct handler for calendar-id based queries
         direct = await _handle_bettershift_direct(user_input)
         if direct is not None:
             return direct
@@ -771,6 +755,16 @@ async def execute_tool(name, args):
             result = browser_tool.browse(args[0])
             # Truncate to prevent context overflow
             return _truncate_context(result, max_lines=50)
+
+        elif name == "shift":
+            # New unified BetterShift tool
+            if len(args) < 4:
+                return "Error: shift requires 4 args: action, person, shift_type, date"
+            action, person, shift_type, date = args[0], args[1], args[2], args[3]
+            # Handle None passed as string
+            if shift_type == "None" or shift_type is None:
+                shift_type = None
+            return await bettershift_router.handle_shift(action, person, shift_type, date)
 
         elif name == "list_calendars":
             calendars = await bettershift_client.list_calendars()

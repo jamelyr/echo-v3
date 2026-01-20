@@ -71,8 +71,13 @@ async def list_shifts(calendar_id: str, date: Optional[str] = None) -> List[Dict
     if date:
         params["date"] = date
     data = await request("GET", "/api/shifts", params=params)
+    
+    # Handle auth redirect or error responses
+    if not isinstance(data, list):
+        return data  # Return as-is for error handling upstream
+    
     shifts = data or []
-    normalized = [_normalize_shift_date(s) for s in shifts]
+    normalized = [_normalize_shift_date(s) for s in shifts if isinstance(s, dict)]
     if date:
         for shift in normalized:
             shift["date"] = date
