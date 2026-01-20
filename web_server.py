@@ -394,7 +394,7 @@ body {
     border-color: rgba(188, 19, 254, 0.2);
 }
 
-.message-text { line-height: 1.6; }
+.message-text { line-height: 1.6; white-space: pre-wrap; }
 
 .message-time {
     font-size: 0.7rem;

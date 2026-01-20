@@ -166,6 +166,7 @@ description TEXT
 status TEXT (pending|completed|archived)
 created_at TIMESTAMP
 completed_at TIMESTAMP
+archived_at TIMESTAMP
 ```
 
 **notes**
@@ -370,6 +371,8 @@ response = llm_client.process_input(msg, history=SESSIONS[sid])
 - `complete_task(task_id)` - Mark done
 - `complete_task_by_description(description)` - Mark newest matching pending task
 - `delete_task_by_description(description)` - Delete newest matching task
+- `archive_completed_tasks()` - Mark completed tasks as 'archived' (not deleted)
+- `get_archived_tasks()` - Retrieve all archived tasks for display
 - `add_note(content, embedding)` - Save with embedding vector
 - `get_similar_notes(query_embedding, top_k)` - Vector search
 - `get_chat_history(session_id)` - Load conversation
@@ -503,7 +506,8 @@ CREATE TABLE tasks (
   description TEXT NOT NULL,
   status TEXT DEFAULT 'pending',  -- pending, completed, archived
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  completed_at TIMESTAMP
+  completed_at TIMESTAMP,
+  archived_at TIMESTAMP
 );
 
 -- Indices
@@ -590,7 +594,59 @@ CREATE INDEX idx_session ON chat_history(session_id, created_at);
 
 ---
 
-### FIXED: Issue #2 - Follow-Up News Questions Hang
+### FIXED: Issue #2 - Archive Function Deleted Tasks Instead of Archiving
+
+**Symptom:**
+- User completes tasks and clicks "Archive" button
+- Completed tasks disappear permanently
+- Archives page shows no archived tasks (always empty)
+
+**Root Cause:**
+- `archive_chat()` function in web_server.py called `database.delete_completed_tasks()` 
+- This permanently deleted completed tasks from database
+- `get_archived_tasks()` only retrieves tasks with status='archived'
+- Since tasks were deleted (not archived), Archives page was always empty
+
+**Solution:**
+1. Changed `archive_chat()` to call `archive_completed_tasks()` instead:
+   ```python
+   # BEFORE (❌ Deletes permanently)
+   database.delete_completed_tasks()
+   
+   # AFTER (✅ Marks as 'archived')
+   database.archive_completed_tasks()
+   ```
+
+2. Fixed database functions returning incorrect values:
+   - All delete/update functions checked `conn.total_changes` BEFORE `conn.commit()`
+   - This always returned 0 because changes haven't been committed yet
+   - Changed to `cursor.rowcount` checked AFTER `conn.commit()`
+   - Affected functions: `delete_note()`, `delete_task()`, `complete_task()`, `delete_completed_tasks()`, `complete_all_tasks()`, `archive_completed_tasks()`
+
+3. Added security fixes:
+   - Path traversal protection in `delete_archive_file()` using `os.path.basename()`
+   - File extension validation (only .txt files allowed)
+   - Error handling for corrupted/missing archive files
+
+4. Added confirmation dialog:
+   - Archive button now shows `hx-confirm` dialog before destructive action
+
+**Files Changed:**
+- `database.py`: Lines 146-273 (6 functions fixed with cursor.rowcount)
+- `web_server.py`: Line 2140 (archive_completed_tasks instead of delete)
+- `web_server.py`: Lines 2009-2024 (security fix for path traversal)
+- `web_server.py`: Lines 1390-1440 (error handling for file reads)
+- `web_server.py`: Line 984 (confirmation dialog)
+
+**Test Result:** ✅ PASS - 27/27 tests passed including:
+- Database functions return correct values
+- Archived tasks appear in Archives page
+- Security tests pass (path traversal blocked)
+- Error handling graceful for corrupted files
+
+---
+
+### FIXED: Issue #3 - Follow-Up News Questions Hang
 
 **Symptom:**
 - Turn 1: "latest news" → ✅ Works

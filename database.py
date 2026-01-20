@@ -148,8 +148,8 @@ def delete_note(note_id: int) -> bool:
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("DELETE FROM notes WHERE id = ?", (note_id,))
-    changes = conn.total_changes
     conn.commit()
+    changes = cursor.rowcount
     conn.close()
     return changes > 0
 
@@ -178,8 +178,8 @@ def complete_task(task_id: int) -> bool:
     cursor = conn.cursor()
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     cursor.execute("UPDATE tasks SET status = 'completed', completed_at = ? WHERE id = ?", (now, task_id))
-    changes = conn.total_changes
     conn.commit()
+    changes = cursor.rowcount
     conn.close()
     return changes > 0
 
@@ -188,8 +188,8 @@ def complete_all_tasks() -> int:
     cursor = conn.cursor()
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     cursor.execute("UPDATE tasks SET status = 'completed', completed_at = ? WHERE status = 'pending'", (now,))
-    changes = conn.total_changes
     conn.commit()
+    changes = cursor.rowcount
     conn.close()
     return changes
 
@@ -246,8 +246,8 @@ def delete_task(task_id: int) -> bool:
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
-    changes = conn.total_changes
     conn.commit()
+    changes = cursor.rowcount
     conn.close()
     return changes > 0
 
@@ -255,8 +255,8 @@ def delete_completed_tasks() -> int:
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("DELETE FROM tasks WHERE status = 'completed'")
-    changes = conn.total_changes
     conn.commit()
+    changes = cursor.rowcount
     conn.close()
     return changes
 
@@ -268,8 +268,8 @@ def archive_completed_tasks() -> int:
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     # Mark 'completed' tasks as 'archived'
     cursor.execute("UPDATE tasks SET status = 'archived', archived_at = ? WHERE status = 'completed'", (now,))
-    changes = conn.total_changes
     conn.commit()
+    changes = cursor.rowcount
     conn.close()
     return changes
 

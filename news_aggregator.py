@@ -72,16 +72,27 @@ async def get_daily_news(topic: str = None):
     today = datetime.now().strftime("%Y-%m-%d")
     headlines = await _aggregator.fetch_headlines(limit=15, topic=topic)
     
-    header = f"**📅 Daily News ({today})**"
+    header = f"📅 **Daily News** ({today})"
     if topic:
-        header = f"**📅 News on '{topic}' ({today})**"
+        header = f"🔍 **News on '{topic}'** ({today})"
     
     if not headlines:
         return f"No fresh news found for '{topic}'." if topic else "No fresh news found at the moment."
 
-    txt = f"{header}\n"
+    # Group headlines by source for cleaner display
+    by_source = {}
     for h in headlines:
-        txt += f"- [{h['source']}] {h['headline']}\n"
+        source = h['source']
+        if source not in by_source:
+            by_source[source] = []
+        by_source[source].append(h['headline'])
+    
+    txt = f"{header}\n\n"
+    for source, items in by_source.items():
+        txt += f"📰 **{source}**\n"
+        for item in items:
+            txt += f"   • {item}\n"
+        txt += "\n"
     
     # Only cache general news to update the global 'data' key
     if not topic:
