@@ -1,22 +1,33 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ECHO V3 // SYSTEM OVERRIDE</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;500;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;500;700&display=swap"
+        rel="stylesheet">
     <style>
         :root {
             --bg-deep: #050505;
+            --bg-gradient: radial-gradient(circle at center, #1a1a2e 0%, #050505 100%);
             --neon-purple: #bc13fe;
             --neon-blue: #00f3ff;
             --neon-pink: #ff0055;
-            --glass: rgba(255, 255, 255, 0.03);
-            --glass-border: rgba(255, 255, 255, 0.1);
+            --neon-yellow: #ffcc00;
+
+            /* Gradients */
+            --grad-cyber: linear-gradient(135deg, var(--neon-blue), var(--neon-purple));
+            --grad-heat: linear-gradient(135deg, var(--neon-pink), var(--neon-yellow));
+            --grad-glass: linear-gradient(145deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.01));
+
+            --glass: rgba(20, 20, 30, 0.4);
+            --glass-border: rgba(255, 255, 255, 0.08);
             --text-main: #ffffff;
-            --text-dim: #8888aa;
+            --text-dim: #a0a0c0;
         }
 
         * {
@@ -27,53 +38,107 @@
 
         body {
             background-color: var(--bg-deep);
+            background-image: var(--bg-gradient);
             color: var(--text-main);
             font-family: 'Rajdhani', sans-serif;
             overflow-x: hidden;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
+            position: relative;
         }
 
-        /* Animated Background */
-        .bg-grid {
+        /* Noise Overlay */
+        body::before {
+            content: "";
             position: fixed;
             top: 0;
             left: 0;
+            width: 100%;
+            height: 100%;
+            background: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.04'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 9999;
+            opacity: 0.4;
+        }
+
+        /* Animated Background Grid */
+        .bg-grid {
+            position: fixed;
+            top: -50%;
+            left: -50%;
             width: 200vw;
             height: 200vh;
-            background-image: 
-                linear-gradient(var(--glass-border) 1px, transparent 1px),
-                linear-gradient(90deg, var(--glass-border) 1px, transparent 1px);
-            background-size: 50px 50px;
-            transform: perspective(500px) rotateX(60deg) translateY(-100px) translateZ(-200px);
-            opacity: 0.2;
+            background-image:
+                linear-gradient(rgba(0, 243, 255, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 243, 255, 0.05) 1px, transparent 1px);
+            background-size: 60px 60px;
+            transform: perspective(500px) rotateX(60deg) translateY(0) translateZ(-200px);
             animation: gridMove 20s linear infinite;
-            z-index: -1;
+            z-index: -2;
             pointer-events: none;
+            mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 1) 40%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 1) 40%, transparent 100%);
         }
 
         @keyframes gridMove {
-            0% { transform: perspective(500px) rotateX(60deg) translateY(0) translateZ(-200px); }
-            100% { transform: perspective(500px) rotateX(60deg) translateY(50px) translateZ(-200px); }
+            0% {
+                transform: perspective(500px) rotateX(60deg) translateY(0) translateZ(-200px);
+            }
+
+            100% {
+                transform: perspective(500px) rotateX(60deg) translateY(60px) translateZ(-200px);
+            }
         }
 
         .ambient-glow {
             position: fixed;
-            width: 600px;
-            height: 600px;
-            background: radial-gradient(circle, rgba(188, 19, 254, 0.15), transparent 70%);
+            width: 800px;
+            height: 800px;
+            background: radial-gradient(circle, rgba(188, 19, 254, 0.15), rgba(0, 243, 255, 0.05), transparent 60%);
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
             z-index: -1;
-            filter: blur(50px);
+            filter: blur(80px);
             animation: pulse 8s ease-in-out infinite;
         }
 
+        .ambient-glow-2 {
+            position: fixed;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(255, 0, 85, 0.08), transparent 60%);
+            top: 20%;
+            left: 20%;
+            transform: translate(-50%, -50%);
+            z-index: -1;
+            filter: blur(80px);
+            animation: drift 15s ease-in-out infinite alternate;
+        }
+
         @keyframes pulse {
-            0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.5; }
-            50% { transform: translate(-50%, -50%) scale(1.2); opacity: 0.8; }
+
+            0%,
+            100% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 0.6;
+            }
+
+            50% {
+                transform: translate(-50%, -50%) scale(1.1);
+                opacity: 0.9;
+            }
+        }
+
+        @keyframes drift {
+            0% {
+                transform: translate(-50%, -50%);
+            }
+
+            100% {
+                transform: translate(-30%, -30%);
+            }
         }
 
         /* Container */
@@ -101,10 +166,11 @@
             font-weight: 900;
             letter-spacing: 0.2em;
             text-transform: uppercase;
-            background: linear-gradient(180deg, #fff, #888);
+            background: linear-gradient(180deg, #fff 0%, #a0a0c0 100%);
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
-            text-shadow: 0 0 30px rgba(255, 255, 255, 0.1);
+            text-shadow: 0 0 40px rgba(188, 19, 254, 0.4), 0 0 10px rgba(255, 255, 255, 0.2);
             margin-bottom: 0.5rem;
             position: relative;
             display: inline-block;
@@ -113,33 +179,37 @@
         h1::after {
             content: "V3.0";
             position: absolute;
-            top: -10px;
-            right: -30px;
+            top: -15px;
+            right: -35px;
             font-size: 1rem;
             background: var(--neon-pink);
             color: #fff;
-            padding: 2px 8px;
+            padding: 3px 10px;
             border-radius: 4px;
-            transform: rotate(10deg);
-            box-shadow: 0 0 10px var(--neon-pink);
-            -webkit-text-fill-color: #fff; /* Reset text fill */
+            transform: rotate(12deg);
+            box-shadow: 0 0 15px var(--neon-pink);
+            -webkit-text-fill-color: #fff;
+            /* Reset text fill */
+            text-shadow: none;
+            font-weight: 700;
         }
 
         .status-badge {
             display: inline-flex;
             align-items: center;
-            gap: 0.5rem;
-            padding: 0.5rem 1rem;
-            border: 1px solid var(--neon-blue);
+            gap: 0.6rem;
+            padding: 0.6rem 1.2rem;
+            border: 1px solid rgba(0, 243, 255, 0.3);
             border-radius: 50px;
             color: var(--neon-blue);
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             font-weight: 700;
-            letter-spacing: 2px;
+            letter-spacing: 3px;
             text-transform: uppercase;
-            box-shadow: 0 0 15px rgba(0, 243, 255, 0.2);
-            background: rgba(0, 243, 255, 0.05);
-            margin-top: 1rem;
+            box-shadow: 0 0 20px rgba(0, 243, 255, 0.1), inset 0 0 10px rgba(0, 243, 255, 0.05);
+            background: rgba(0, 5, 10, 0.4);
+            margin-top: 1.5rem;
+            backdrop-filter: blur(10px);
         }
 
         .blink {
@@ -147,35 +217,48 @@
             height: 8px;
             background-color: var(--neon-blue);
             border-radius: 50%;
-            animation: blinker 1.5s linear infinite;
+            box-shadow: 0 0 10px var(--neon-blue);
+            animation: blinker 2s linear infinite;
         }
 
-        @keyframes blinker { 50% { opacity: 0; } }
+        @keyframes blinker {
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.3;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
 
         /* Dashboard Grid */
         .grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 2rem;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 2.5rem;
             perspective: 1000px;
         }
 
         .card {
-            background: var(--glass);
+            background: var(--grad-glass);
             border: 1px solid var(--glass-border);
-            padding: 2rem;
-            border-radius: 20px;
+            padding: 2.5rem 2rem;
+            border-radius: 24px;
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transition: all 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
             position: relative;
             overflow: hidden;
             text-decoration: none;
             color: var(--text-main);
             display: flex;
             flex-direction: column;
-            gap: 1rem;
-            group: card;
+            gap: 1.2rem;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
         }
 
         .card::before {
@@ -185,37 +268,68 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.05), transparent);
-            transform: translateX(-100%);
-            transition: 0.5s;
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transform: skewX(-25deg) translateX(-150%);
+            transition: 0.6s;
+            pointer-events: none;
+        }
+
+        /* Card Inner Border Glow */
+        .card::after {
+            content: '';
+            position: absolute;
+            inset: 0px;
+            border-radius: 24px;
+            padding: 1px;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.01));
+            -webkit-mask:
+                linear-gradient(#fff 0 0) content-box,
+                linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
         }
 
         .card:hover {
-            transform: translateY(-10px) scale(1.02);
-            border-color: var(--neon-purple);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(188, 19, 254, 0.2);
+            transform: translateY(-12px) scale(1.02);
+            border-color: rgba(188, 19, 254, 0.5);
+            box-shadow:
+                0 20px 50px rgba(0, 0, 0, 0.5),
+                0 0 30px rgba(188, 19, 254, 0.15),
+                inset 0 0 20px rgba(188, 19, 254, 0.05);
         }
 
         .card:hover::before {
-            transform: translateX(100%);
+            transform: skewX(-25deg) translateX(150%);
         }
 
         .card-icon {
-            font-size: 2.5rem;
+            font-size: 3rem;
             margin-bottom: 0.5rem;
-            filter: drop-shadow(0 0 10px rgba(255,255,255,0.3));
+            filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.2));
+            transition: transform 0.4s ease;
+        }
+
+        .card:hover .card-icon {
+            transform: scale(1.1) rotate(5deg);
         }
 
         .card h2 {
             font-family: 'Orbitron', sans-serif;
-            font-size: 1.5rem;
+            font-size: 1.6rem;
             color: #fff;
+            letter-spacing: 1px;
+            background: linear-gradient(90deg, #fff, #e0e0ff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
 
         .card p {
             color: var(--text-dim);
-            font-size: 1rem;
-            line-height: 1.5;
+            font-size: 1.05rem;
+            line-height: 1.6;
+            font-weight: 300;
         }
 
         .card-arrow {
@@ -225,7 +339,8 @@
             color: var(--neon-purple);
             opacity: 0;
             transform: translateX(-20px);
-            transition: all 0.3s ease;
+            transition: all 0.4s ease;
+            filter: drop-shadow(0 0 5px var(--neon-purple));
         }
 
         .card:hover .card-arrow {
@@ -234,14 +349,47 @@
         }
 
         /* Specific Card Accents */
-        .card.chat:hover { border-color: var(--neon-blue); box-shadow: 0 0 20px rgba(0, 243, 255, 0.2); }
-        .card.chat .card-arrow { color: var(--neon-blue); }
+        .card.chat:hover {
+            border-color: var(--neon-blue);
+            box-shadow: 0 0 30px rgba(0, 243, 255, 0.15), inset 0 0 20px rgba(0, 243, 255, 0.05);
+        }
 
-        .card.tasks:hover { border-color: var(--neon-pink); box-shadow: 0 0 20px rgba(255, 0, 85, 0.2); }
-        .card.tasks .card-arrow { color: var(--neon-pink); }
-        
-        .card.archives:hover { border-color: #ff9500; box-shadow: 0 0 20px rgba(255, 149, 0, 0.2); }
-        .card.archives .card-arrow { color: #ff9500; }
+        .card.chat .card-arrow {
+            color: var(--neon-blue);
+            filter: drop-shadow(0 0 5px var(--neon-blue));
+        }
+
+        .card.chat:hover h2 {
+            background: var(--grad-cyber);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .card.tasks:hover {
+            border-color: var(--neon-pink);
+            box-shadow: 0 0 30px rgba(255, 0, 85, 0.15), inset 0 0 20px rgba(255, 0, 85, 0.05);
+        }
+
+        .card.tasks .card-arrow {
+            color: var(--neon-pink);
+            filter: drop-shadow(0 0 5px var(--neon-pink));
+        }
+
+        .card.tasks:hover h2 {
+            background: var(--grad-heat);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .card.archives:hover {
+            border-color: var(--neon-yellow);
+            box-shadow: 0 0 30px rgba(255, 204, 0, 0.15), inset 0 0 20px rgba(255, 204, 0, 0.05);
+        }
+
+        .card.archives .card-arrow {
+            color: var(--neon-yellow);
+            filter: drop-shadow(0 0 5px var(--neon-yellow));
+        }
 
         /* Footer */
         footer {
@@ -258,14 +406,20 @@
         .glitch {
             position: relative;
         }
-        
+
         /* Mobile Optimization */
         @media (max-width: 768px) {
-            h1 { font-size: 3rem; }
-            .container { padding: 1rem; }
+            h1 {
+                font-size: 3rem;
+            }
+
+            .container {
+                padding: 1rem;
+            }
         }
     </style>
 </head>
+
 <body>
 
     <div class="bg-grid"></div>
@@ -284,7 +438,8 @@
             <a href="/" class="card chat">
                 <div class="card-icon">💬</div>
                 <h2>Neural Link</h2>
-                <p>Direct interface with the core AI. Engage in conversation, query data, and explore the knowledge base.</p>
+                <p>Direct interface with the core AI. Engage in conversation, query data, and explore the knowledge
+                    base.</p>
                 <div class="card-arrow">→</div>
             </a>
 
@@ -301,14 +456,14 @@
                 <p>Access stored data logs[thoughts] and historical records. Review past interactions and insights.</p>
                 <div class="card-arrow">→</div>
             </a>
-            
+
             <a href="/schedule" class="card schedule">
                 <div class="card-icon">📆</div>
                 <h2>Chrono Sync</h2>
                 <p>Manage temporal commitments and shift schedules. Synchronize with BetterShift protocol.</p>
                 <div class="card-arrow">→</div>
             </a>
-            
+
             <a href="/archives" class="card archives">
                 <div class="card-icon">🗄️</div>
                 <h2>Archives</h2>
@@ -335,4 +490,5 @@
         });
     </script>
 </body>
+
 </html>
