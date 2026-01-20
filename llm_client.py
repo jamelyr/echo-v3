@@ -347,7 +347,7 @@ NEWS_QUERY_PATTERNS = re.compile(
 )
 
 BETTERSHIFT_QUERY_PATTERNS = re.compile(
-    r"\b(calendar|calendars|shift|shifts|schedule|preset|presets|note|notes)\b",
+    r"\b(calendar|calendars|shift|shifts|schedule|preset|presets|note|notes|sa\+?|working|on shift|is off)\b",
     re.IGNORECASE,
 )
 
