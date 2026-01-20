@@ -150,7 +150,8 @@ def parse_date(date_str: str) -> str:
     if not date_str:
         return datetime.now().strftime("%Y-%m-%d")
     
-    date_str_lower = date_str.lower().strip()
+    # Strip punctuation and whitespace
+    date_str_lower = date_str.lower().strip().rstrip('?!.')
     tz = pytz.timezone('Indian/Mauritius')
     now = datetime.now(tz)
     
