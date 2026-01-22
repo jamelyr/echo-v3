@@ -31,6 +31,9 @@ CHECK_INTERVAL = 5 # Seconds
 RECEIVER_SCRIPT = "v4/services/receiver_daemon.py"
 HRM_SCRIPT = "v4/services/hrm_governor.py"
 
+# Import PartnerBrain for actual HRM processing
+from partner_brain import PartnerBrain
+
 class ResourceMonitor:
     def is_creative_mode(self):
         """Check if we are in a high-performance creative session"""
@@ -54,6 +57,19 @@ class V4Orchestrator:
         self.monitor = ResourceMonitor()
         self.receiver_process = None
         self.batch_paused = False
+        self.brain = None
+        self._init_brain()
+    
+    def _init_brain(self):
+        """Initialize PartnerBrain with HRM and Whisper models."""
+        try:
+            logger.info("🧠 Initializing PartnerBrain...")
+            self.brain = PartnerBrain()
+            self.brain.load_models()
+            logger.info("✅ PartnerBrain loaded successfully")
+        except Exception as e:
+            logger.error(f"❌ Failed to initialize PartnerBrain: {e}")
+            self.brain = None
         
     def start_receiver(self):
         """Start the high-performance audio ingestion daemon"""
@@ -95,24 +111,26 @@ class V4Orchestrator:
                 logger.info("▶️  RESUMING Batch Processor | System Idle")
                 self.batch_paused = False
             
-            # Mock Processing: Check for upscaled files and "process" them
+            # Real Processing: Check for upscaled files and process with PartnerBrain
             queue_dir = Path(os.path.expanduser("~/Documents/ag/v4/queue/upscaled"))
             processed_dir = Path(os.path.expanduser("~/Documents/ag/v4/queue/processed"))
             
-            # Simple interaction: if file exists, move to processed after 1 sec delay (simulate work)
-            if queue_dir.exists():
+            if queue_dir.exists() and self.brain:
                 for f in queue_dir.glob("*.wav"):
-                    logger.info(f"🧠 Processing {f.name}...")
-                    await asyncio.sleep(0.5) # Simulate transcription time
+                    logger.info(f"🧠 Processing {f.name} with PartnerBrain...")
                     
-                    # Mock HRM
-                    logger.info(f"⚖️ HRM Validating {f.name}...")
+                    try:
+                        # Call PartnerBrain to process audio (Whisper + HRM + Governor)
+                        self.brain.process_audio(str(f))
+                        
+                        # Move to processed after successful processing
+                        dest = processed_dir / f.name
+                        f.rename(dest)
+                        logger.info(f"✅ Completed and moved to: {dest}")
+                    except Exception as e:
+                        logger.error(f"❌ Failed to process {f.name}: {e}")
                     
-                    # Move to processed
-                    dest = processed_dir / f.name
-                    f.rename(dest)
-                    logger.info(f"✅ Completed: {dest}")
-                    break # One at a time for the loop
+                    break # Process one at a time
             
             await asyncio.sleep(1)
 
