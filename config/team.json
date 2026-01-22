@@ -1,0 +1,56 @@
+{
+    "entities": {
+        "nirvan": {
+            "calendar_id": "ab75b3a5-61fc-4b59-a7b4-59b3099e4917",
+            "role": "Manager"
+        },
+        "dom": {
+            "calendar_id": "a36b99cf-927e-414c-820f-27dd2e3ccbb1",
+            "role": "Team Lead"
+        },
+        "marley": {
+            "calendar_id": "1093844c-b5d0-4067-941c-78f1d03fc085",
+            "role": "Developer"
+        }
+    },
+    "shift_types": {
+        "sa": {
+            "title": "SA",
+            "start_time": "15:30",
+            "end_time": "23:30",
+            "is_all_day": false
+        },
+        "sa+": {
+            "title": "SA+",
+            "start_time": "15:30",
+            "end_time": "01:00",
+            "is_all_day": false
+        },
+        "off": {
+            "title": "Off",
+            "start_time": null,
+            "end_time": null,
+            "is_all_day": true
+        }
+    },
+    "groups": {
+        "the guys": [
+            "nirvan",
+            "dom"
+        ],
+        "the team": [
+            "nirvan",
+            "dom"
+        ],
+        "everyone": [
+            "nirvan",
+            "dom",
+            "marley"
+        ],
+        "all": [
+            "nirvan",
+            "dom",
+            "marley"
+        ]
+    }
+}

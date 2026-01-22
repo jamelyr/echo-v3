@@ -1,0 +1,29 @@
+{
+    "hunter_epoch": {
+        "name": "Golden Ball",
+        "liquid_goal": 1500000,
+        "currency": "MUR",
+        "strategic_priorities": [
+            "Land Acquisition",
+            "Resource Efficiency",
+            "High-Leverage Networking",
+            "Health & Cognitive Optimization"
+        ],
+        "anti_patterns": [
+            " mindless_scrolling",
+            "low_value_meetings",
+            "repetitive_manual_tasks"
+        ],
+        "conflict_threshold": 0.8
+    },
+    "resource_management": {
+        "creative_apps": [
+            "Serato DJ Pro",
+            "Resolume Arena",
+            "Final Cut Pro",
+            "Logic Pro"
+        ],
+        "cpu_threshold": 40.0,
+        "idle_timeout_seconds": 300
+    }
+}
