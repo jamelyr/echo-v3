@@ -10,6 +10,8 @@ import json
 import logging
 import asyncio
 import tempfile
+import torch
+import numpy as np
 from pathlib import Path
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -41,7 +43,6 @@ def test_hrm_forward_pass():
     print_header("TEST 1: HRM Model Forward Pass")
     
     try:
-        import torch
         sys.path.insert(0, "HRM")
         from models.hrm.hrm_act_v1 import HierarchicalReasoningModel_ACTV1
 
@@ -139,7 +140,6 @@ def test_semantic_encoding():
     
     try:
         from sentence_transformers import SentenceTransformer
-        import numpy as np
 
         # Load encoder
         logger.info("Loading SentenceTransformer...")

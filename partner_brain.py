@@ -198,7 +198,46 @@ class PartnerBrain(nn.Module):
             return
 
         if not text: return
-
+        
+        # B1. Route Decision: Use V3-V4 Bridge
+        from v3_v4_bridge import get_bridge
+        self.telemetry.update(stage="ROUTE", status="ACTIVE")
+        
+        try:
+            bridge = get_bridge(self)
+            decision_result = bridge.reason_with_confidence(text, context="Transcribed from audio")
+            
+            logger.info(f"Router decision: Source={decision_result['source']}, Confidence={decision_result['confidence']:.2f}")
+            logger.info(f"Reasoning trace: {decision_result['reasoning_trace']}")
+            
+            # If V3 LLM was used (general reasoning), use that result directly
+            if decision_result['source'] == 'V3-LLM':
+                self.telemetry.update(stage="DECIDED", status="COMPLETE")
+                
+                # Log decision
+                logger.info(f"✅ V3 LLM Decision: {decision_result['answer'][:200]}...")
+                
+                # Add to database as task (if it's a task-like description)
+                if any(kw in text.lower() for kw in ['add', 'create', 'task', 'do', 'make', 'buy']):
+                    import database
+                    task_desc = decision_result['answer'].split('\n')[0].strip()
+                    if task_desc:
+                        task_id = database.add_task(task_desc)
+                        logger.info(f"📝 Task added (ID: {task_id}) from V3 LLM decision")
+                
+                # Skip HRM processing if V3 LLM already decided
+                return
+            
+            # If HRM was used or no clear decision, continue to HRM processing
+            self.telemetry.update(metrics={
+                "v3_confidence": decision_result.get('v3_confidence', 0.0),
+                "hrm_confidence": decision_result.get('hrm_confidence', 0.0)
+            })
+            
+        except Exception as e:
+            logger.error(f"Routing failed: {e}")
+            logger.info("Continuing to HRM processing...")
+        
         # B. Rationalize (Sapient HRM with ACT)
         self.telemetry.update(stage="REASON", status="ACTIVE")
         if self.hrm_loaded and self.hrm_model:
