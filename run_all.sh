@@ -93,7 +93,7 @@ start_services() {
   if [ -d "$WYGIWYH_DIR" ]; then
     echo "💰 Starting WYGIWYH finance tracker..."
     pushd "$WYGIWYH_DIR" >/dev/null
-    nohup python manage.py runserver 0.0.0.0:8000 > "$WYGIWYH_LOG" 2>&1 &
+    nohup python app/manage.py runserver 0.0.0.0:8000 > "$WYGIWYH_LOG" 2>&1 &
     echo $! > "$WYGIWYH_PID_FILE"
     popd >/dev/null
   else

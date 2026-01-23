@@ -130,8 +130,16 @@ You have access to the following tools:
 20. **finance_transactions(limit: int = 10, category: str = None)**
     - List recent transactions with optional category filter.
     - Example: `Tool: finance_transactions(5, "Food")`
-
-FORMAT INSTRUCTIONS:
+ 
+21. **recall_facts(query: str, fact_type: str = None)**
+    - Searches auto-extracted facts (entities, preferences, tech stack, patterns, context).
+    - fact_type: Optional filter - "entity", "preference", "tech_stack", "pattern", "context"
+    - Use this when user asks about preferences, people, tools, or things they mentioned before.
+    - Example: `Tool: recall_facts("Nirvan")`
+    - Example: `Tool: recall_facts("preferences")`
+    - Example: `Tool: recall_facts("tech stack", "tech_stack")`
+ 
+ FORMAT INSTRUCTIONS:
 - To use a tool, you MUST output: `Tool: tool_name(arguments)`
 - To speak to the user, you MUST output: `Answer: your message`
 - You can "Think" before acting using `Thought: ...`
@@ -278,6 +286,13 @@ async def process_input(user_input, user_id="default", history=[]):
             if entity_context and "Found" in entity_context:
                 memory_context += f"\n\nENTITY INFO ({name}):\n{entity_context}"
     
+    # Fetch relevant auto-extracted facts
+    import fact_extractor
+    fact_query = user_input
+    fact_context = await fact_extractor.recall_facts(fact_query, limit=3)
+    if "Found" in fact_context:
+        memory_context += f"\n\nAUTO-EXTRACTED FACTS:\n{fact_context}"
+    
     system_prompt = f"""You are Echo, a private AI assistant.
 {context_manager.format_for_prompt()}{memory_context}
 
@@ -291,6 +306,22 @@ IMPORTANT:
 - For BetterShift requests, use the BetterShift tools instead of guessing.
 - Do not hallucinate or guess.
 - Use recall_notes to understand the user's professional context, team members, and specific project requirements.
+
+CRITICAL FOR FINANCE TOOLS:
+- When you receive ANY request about money/finance (amounts, expenses, income, transactions, balances), you MUST use a finance tool.
+- NEVER respond with "added" or "recorded" without first calling `Tool: finance_add_expense(...)` or `Tool: finance_add_income(...)`
+- Format requirement: You MUST start with "Tool:" and the function name, no exceptions
+- Examples of correct responses:
+  - "add expense 50 for food" -> `Tool: finance_add_expense(50, "Food", "...")`
+  - "income 100 from salary" -> `Tool: finance_add_income(100, "Salary", "...")`
+  - "show my balance" -> `Tool: finance_balance()`
+- WRONG responses (DO NOT DO THIS):
+  - ❌ "Added 50 MUR expense"
+  - ❌ "Income of 100 recorded"
+  - ❌ "Your balance is 50 MUR"
+- CORRECT responses:
+  - ✅ `Tool: finance_add_expense(50, "Food", "Dinner")`
+  - ✅ `Tool: finance_balance()`
 
 ENTITY MAPPING RULES:
 - ALWAYS verify the subject of the sentence (e.g., "Dom", "Nirvan", "I", "me", "my team").
@@ -559,10 +590,12 @@ def parse_tool(text):
         name = match.group(1)
         args_str = match.group(2) if match.lastindex and match.lastindex >= 2 else ""
 
+        # Clean up args_str - remove markdown, trailing characters, etc.
+        if args_str:
+            args_str = args_str.strip()
+
         # Safe arg parsing (handling quoted strings, ints, etc.)
         args = []
-        if args_str is not None:
-            args_str = args_str.strip()
         if args_str:
             try:
                 args = ast.literal_eval(f"[{args_str}]")
@@ -714,6 +747,10 @@ async def execute_tool(name, args):
             chats = database.get_all_chat_history()
             tasks = database.get_tasks(status='completed')
             
+            # 1.5 Extract Facts (before archive)
+            import fact_extractor
+            extraction_result = await fact_extractor.extract_and_archive_facts(chats, archive_source="session")
+            
             # 2. Generate Content
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
             filename = f"archives/archive_{datetime.now().strftime('%Y-%m-%d_%H%M')}.txt"
@@ -737,7 +774,19 @@ async def execute_tool(name, args):
             database.clear_chat_history()
             count = database.archive_completed_tasks()
             
-            return f"✅ Session archived to {filename}. Context cleared. {count} tasks moved to archive."
+            # 5. Build response
+            response = f"✅ Session archived to {filename}. Context cleared. {count} tasks moved to archive."
+            
+            if extraction_result.get("stored", 0) > 0:
+                response += f"\n\n📝 Extracted {extraction_result['stored']} facts:"
+                for fact in extraction_result['facts'][:3]:  # Show top 3
+                    response += f"\n  - [{fact['type'].upper()}] {fact['value'][:60]}..."
+                if len(extraction_result['facts']) > 3:
+                    response += f"\n  - ...and {len(extraction_result['facts']) - 3} more"
+            elif extraction_result.get("skipped"):
+                response += f"\n\n⏭️  Fact extraction skipped: {extraction_result['reason']}"
+            
+            return response
             
         elif name == "search_web":
 
@@ -966,6 +1015,17 @@ async def execute_tool(name, args):
             # Truncate to prevent context overflow
             return _truncate_context(result.strip(), max_lines=50)
         
+        elif name == "recall_facts":
+            import fact_extractor
+            query = args[0] if args else ""
+            fact_type = args[1] if len(args) > 1 else None
+            
+            if not query:
+                return "Error: query is required for recall_facts."
+            
+            result = await fact_extractor.recall_facts(query, fact_type=fact_type, limit=5)
+            return result
+         
         elif name == "check_entity_status":
             # Get all calendars
             calendars = await bettershift_client.list_calendars()
@@ -1114,25 +1174,25 @@ async def call_llm(messages):
     params = {
         "messages": messages,
         "max_tokens": 600,
-        "temperature": 0.3, # Lower temp for tool reliability
+        "temperature": 0.1, # Very low temp to prevent hallucination
         "stop": ["Observation:"] # Stop at observation for ReAct loop
     }
     try:
-        async with httpx.AsyncClient(timeout=90.0) as client:
+        async with httpx.AsyncClient(timeout=120.0) as client:
             resp = await client.post(f"{MLX_URL}/chat/completions", json=params)
             if resp.status_code == 200:
                 ret = resp.json()["choices"][0]["message"]["content"].strip()
-                
-                # Handle reasoning models that output <think>...</think> tags
-                if "<think>" in ret and "</think>" in ret:
-                    # Extract only the part AFTER </think>
-                    parts = ret.split("</think>", 1)
+
+                # Handle reasoning models that output <|...|> tags
+                if "<|" in ret and "|>" in ret:
+                    # Extract only the part AFTER <|...|>
+                    parts = ret.split("<|", 1)
                     if len(parts) > 1:
                         ret = parts[1].strip()
-                elif "<think>" in ret:
+                elif "<|" in ret:
                     # Thinking started but not finished - strip it
-                    ret = re.sub(r'<think>.*', '', ret, flags=re.DOTALL).strip()
-                
+                    ret = re.sub(r'<\|.*', '', ret, flags=re.DOTALL).strip()
+
                 return ret
             return f"LLM Error: {resp.status_code}"
     except Exception as e:

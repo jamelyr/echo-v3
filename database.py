@@ -72,6 +72,26 @@ def init_db():
     if "embedding" not in note_columns:
         cursor.execute("ALTER TABLE notes ADD COLUMN embedding TEXT")
 
+    # Facts table for auto-extracted entities and preferences
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS facts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            fact_type TEXT NOT NULL,
+            value TEXT NOT NULL,
+            confidence REAL DEFAULT 1.0,
+            source TEXT,
+            metadata TEXT,
+            embedding TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            last_accessed TIMESTAMP,
+            access_count INTEGER DEFAULT 0
+        )
+    ''')
+
+    # Facts index for type filtering
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_facts_type ON facts(fact_type)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_facts_created ON facts(created_at)")
+
     conn.commit()
     conn.close()
 
@@ -329,6 +349,102 @@ def is_message_processed(message_id: str) -> bool:
     exists = cursor.fetchone() is not None
     conn.close()
     return exists
+
+def add_fact(fact_type: str, value: str, confidence: float = 1.0,
+              source: str = None, metadata: dict = None, embedding: list = None) -> int:
+    """Store a fact with optional embedding"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    embedding_json = json.dumps(embedding) if embedding else None
+    metadata_json = json.dumps(metadata) if metadata else None
+    cursor.execute(
+        "INSERT INTO facts (fact_type, value, confidence, source, metadata, embedding) VALUES (?, ?, ?, ?, ?, ?)",
+        (fact_type, value, confidence, source, metadata_json, embedding_json)
+    )
+    conn.commit()
+    fact_id = cursor.lastrowid
+    conn.close()
+    return fact_id
+
+def get_similar_facts(query_embedding: list, fact_type: str = None, top_k: int = 5) -> List[Dict]:
+    """Search facts by semantic similarity"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    if fact_type:
+        cursor.execute("SELECT * FROM facts WHERE fact_type = ?", (fact_type,))
+    else:
+        cursor.execute("SELECT * FROM facts")
+    
+    rows = cursor.fetchall()
+    conn.close()
+
+    if not rows:
+        return []
+
+    facts_with_scores = []
+    query_vec = np.array(query_embedding)
+    norm_query = np.linalg.norm(query_vec)
+    
+    if norm_query == 0:
+        return [dict(row) for row in rows[:top_k]]
+
+    for row in rows:
+        fact = dict(row)
+        if not fact.get('embedding'):
+            continue
+            
+        try:
+            emb_vec = np.array(json.loads(fact['embedding']))
+            norm_emb = np.linalg.norm(emb_vec)
+            if norm_emb == 0:
+                score = 0
+            else:
+                score = np.dot(query_vec, emb_vec) / (norm_query * norm_emb)
+            
+            facts_with_scores.append((score, fact))
+        except Exception:
+            continue
+
+    facts_with_scores.sort(key=lambda x: x[0], reverse=True)
+    
+    return [f for score, f in facts_with_scores[:top_k]]
+
+def get_facts(fact_type: str = None, limit: int = 50) -> List[Dict]:
+    """Retrieve facts, optionally filtered by type"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    if fact_type:
+        cursor.execute("SELECT * FROM facts WHERE fact_type = ? ORDER BY created_at DESC LIMIT ?", (fact_type, limit))
+    else:
+        cursor.execute("SELECT * FROM facts ORDER BY created_at DESC LIMIT ?", (limit,))
+    
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+def update_fact_access(fact_id: int):
+    """Track when a fact is accessed"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    cursor.execute(
+        "UPDATE facts SET last_accessed = ?, access_count = access_count + 1 WHERE id = ?",
+        (now, fact_id)
+    )
+    conn.commit()
+    conn.close()
+
+def delete_fact(fact_id: int) -> bool:
+    """Delete a specific fact"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM facts WHERE id = ?", (fact_id,))
+    conn.commit()
+    changes = cursor.rowcount
+    conn.close()
+    return changes > 0
 
 if __name__ == "__main__":
     init_db()

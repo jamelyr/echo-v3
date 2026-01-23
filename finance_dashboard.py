@@ -11,12 +11,18 @@ async def render_finance_view():
         # Fetch data from WYGIWYH
         accounts = await wygiwyh_client._wygiwyh_client.get_accounts()
         transactions_raw = await wygiwyh_client._wygiwyh_client.get_transactions(limit=10)
-        
+
         # Calculate totals by currency
         balance_by_currency = {}
         for account in accounts:
             currency = account.get("currency", {}).get("code", "USD")
             balance = account.get("balance", 0)
+            # Convert string balance to float if needed
+            if isinstance(balance, str):
+                try:
+                    balance = float(balance)
+                except ValueError:
+                    balance = 0.0
             if currency not in balance_by_currency:
                 balance_by_currency[currency] = 0
             balance_by_currency[currency] += balance
@@ -51,6 +57,12 @@ async def render_finance_view():
         for tx in transactions_raw[:10]:
             date = tx.get("date", "")
             amount = tx.get("amount", 0)
+            # Convert string amount to float if needed
+            if isinstance(amount, str):
+                try:
+                    amount = float(amount)
+                except ValueError:
+                    amount = 0.0
             currency = tx.get("currency", {}).get("code", "USD")
             description = tx.get("description", "No description")
             category = tx.get("category", {}).get("name", "Uncategorized")
@@ -71,8 +83,17 @@ async def render_finance_view():
             '''
         
         # Calculate spending summary
-        total_income = sum(tx.get("amount", 0) for tx in transactions_raw if tx.get("amount", 0) >= 0)
-        total_expenses = sum(abs(tx.get("amount", 0)) for tx in transactions_raw if tx.get("amount", 0) < 0)
+        def safe_amount(tx):
+            amount = tx.get("amount", 0)
+            if isinstance(amount, str):
+                try:
+                    return float(amount)
+                except ValueError:
+                    return 0.0
+            return amount
+        
+        total_income = sum(safe_amount(tx) for tx in transactions_raw if safe_amount(tx) >= 0)
+        total_expenses = sum(abs(safe_amount(tx)) for tx in transactions_raw if safe_amount(tx) < 0)
         net = total_income - total_expenses
         
         return f'''

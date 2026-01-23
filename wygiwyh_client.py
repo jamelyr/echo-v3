@@ -4,9 +4,11 @@ Interfaces with local WYGIWYH instance API for personal finance management.
 All data stays local - no cloud services, no API keys needed.
 """
 import os
+import json
 import httpx
 from typing import List, Dict, Optional
 from datetime import datetime, timedelta
+import pytz
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -51,39 +53,64 @@ class WYGIWYHClient:
     async def get_balance_summary(self, account_filter: Optional[str] = None) -> str:
         """Get formatted balance summary for all or specific account."""
         accounts = await self.get_accounts()
-        
+
         if not accounts:
             if isinstance(accounts, dict) and "error" in accounts:
                 return f"❌ {accounts['error']}"
             return "No accounts found. Set up WYGIWYH first at {}".format(self.base_url)
-        
+
+        # Get all transactions to calculate balances
+        params = {"page_size": 1000, "ordering": "-date"}
+        all_txs = await self._request("GET", "/transactions/", params=params)
+        if "error" in all_txs:
+            return f"❌ {all_txs['error']}"
+        transactions = all_txs.get("results", [])
+
+        # Calculate balances per account (income - expenses)
+        account_balances = {}
+        for account in accounts:
+            account_id = account.get("id")
+            account_balances[account_id] = 0.0
+
+        for tx in transactions:
+            # Add all transactions: income is positive, expenses are negative
+            account_id = tx.get("account", {}).get("id")
+            amount = tx.get("amount", 0)
+            if isinstance(amount, str):
+                try:
+                    amount = float(amount)
+                except ValueError:
+                    amount = 0.0
+            if account_id in account_balances:
+                account_balances[account_id] += amount
+
         # Filter by account name if specified
         if account_filter:
             accounts = [a for a in accounts if account_filter.lower() in a.get("name", "").lower()]
             if not accounts:
                 return f"❌ No account matching '{account_filter}' found."
-        
+
         lines = ["💰 **Account Balances**\n"]
         total_by_currency = {}
-        
+
         for account in accounts:
             name = account.get("name", "Unknown")
-            balance = account.get("balance", 0)
+            balance = account_balances.get(account.get("id"), 0.0)
             currency = account.get("currency", {}).get("code", "USD")
-            
+
             lines.append(f"  • **{name}**: {balance:,.2f} {currency}")
-            
+
             # Track totals by currency
             if currency not in total_by_currency:
                 total_by_currency[currency] = 0
             total_by_currency[currency] += balance
-        
+
         # Add totals if multiple accounts
         if len(accounts) > 1:
             lines.append("\n**Totals:**")
             for currency, total in total_by_currency.items():
                 lines.append(f"  • {total:,.2f} {currency}")
-        
+
         return "\n".join(lines)
     
     async def get_transactions(self, limit: int = 10, category_filter: Optional[str] = None) -> List[Dict]:
@@ -122,7 +149,13 @@ class WYGIWYHClient:
         for tx in transactions:
             date = tx.get("date", "")
             amount = tx.get("amount", 0)
-            currency = tx.get("currency", {}).get("code", "USD")
+            # Convert string amount to float if needed
+            if isinstance(amount, str):
+                try:
+                    amount = float(amount)
+                except ValueError:
+                    amount = 0.0
+            currency = tx.get("account", {}).get("currency", {}).get("code", "USD")
             description = tx.get("description", "No description")
             category_name = tx.get("category", {}).get("name", "Uncategorized")
             
@@ -168,21 +201,23 @@ class WYGIWYHClient:
         
         # Create transaction
         # WYGIWYH uses negative amounts for expenses, positive for income
+        tx_type = "IN" if is_income else "EX"
         final_amount = amount if is_income else -abs(amount)
-        
+
         tx_data = {
             "amount": final_amount,
             "description": description,
             "category": category["id"],
-            "account": account["id"],
-            "date": datetime.now().strftime("%Y-%m-%d"),
-            "currency": account.get("currency", {}).get("id")
+            "account_id": account["id"],
+            "date": datetime.now(pytz.UTC).strftime("%Y-%m-%d"),
+            "type": tx_type
         }
-        
+
         result = await self._request("POST", "/transactions/", json=tx_data)
+
         if "error" in result:
             return f"❌ {result['error']}"
-        
+
         type_str = "Income" if is_income else "Expense"
         return f"✅ {type_str} recorded: {abs(amount):,.2f} {account.get('currency', {}).get('code', 'USD')} - {description} ({category_name})"
     
@@ -226,9 +261,16 @@ class WYGIWYHClient:
         
         for tx in transactions:
             amount = tx.get("amount", 0)
-            currency = tx.get("currency", {}).get("code", "USD")
-            
-            if amount >= 0:
+            tx_type = tx.get("type", "EX")
+            # Convert string amount to float if needed
+            if isinstance(amount, str):
+                try:
+                    amount = float(amount)
+                except ValueError:
+                    amount = 0.0
+            currency = tx.get("account", {}).get("currency", {}).get("code", "USD")
+
+            if tx_type == "IN":
                 income_by_currency[currency] = income_by_currency.get(currency, 0) + amount
             else:
                 expenses_by_currency[currency] = expenses_by_currency.get(currency, 0) + abs(amount)
