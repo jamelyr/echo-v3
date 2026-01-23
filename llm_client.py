@@ -19,6 +19,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import database
+from tools.owl_agent import OWLAgent
 import news_aggregator
 import context_manager
 import mlx_embeddings
@@ -793,12 +794,20 @@ async def execute_tool(name, args):
         elif name == "search_web":
 
             q = args[0]
-            if not TAVILY_API_KEY: return "Error: No TAVILY_API_KEY configured."
-            async with httpx.AsyncClient() as client:
-                data = await client.post("https://api.tavily.com/search",
-                    json={"api_key": TAVILY_API_KEY, "query": q, "include_answer": True}, timeout=10)
-                resp = data.json()
-                return resp.get("answer") or str(resp.get("results", [])[:3])
+            # Use OWL agent for web search (preserves RAM by using current MLX model)
+            try:
+                owl = OWLAgent(model_url="http://127.0.0.1:8080/v1")
+                result = owl.run_task(f"Search for: {q}", max_steps=8)
+                return result
+            except Exception as e:
+                # Fallback to Tavily if OWL fails
+                if not TAVILY_API_KEY: 
+                    return f"OWL search failed: {str(e)}. No TAVILY_API_KEY configured for fallback."
+                async with httpx.AsyncClient() as client:
+                    data = await client.post("https://api.tavily.com/search",
+                        json={"api_key": TAVILY_API_KEY, "query": q, "include_answer": True}, timeout=10)
+                    resp = data.json()
+                    return resp.get("answer") or str(resp.get("results", [])[:3])
                 
         elif name == "get_news":
             topic = args[0] if args else None

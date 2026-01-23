@@ -14,17 +14,17 @@ class OWLAgent:
     Controls a stateful browser via webctl and performs multi-step research.
     """
     
-    def __init__(self, model_name: str = "Llama-3.2-3B-Instruct-4bit"):
-        # Setup Model Connection to Local Server
-        # Defaulting to 127.0.0.1:1234 (Echo V3 standard)
+    def __init__(self, model_url: str = "http://127.0.0.1:8080/v1"):
+        # Setup Model Connection to Echo's MLX Server
+        # Uses the currently loaded hot-swappable model
         self.model = ModelFactory.create(
             model_platform=ModelPlatformType.OPENAI_COMPATIBILITY_MODEL,
-            model_type=model_name,
+            model_type="current",  # Will use whatever model is loaded
             model_config_dict={
                 "temperature": 0.0,
-                "max_tokens": 16384 # support complex reasoning/summaries
+                "max_tokens": 4096  # Conservative for RAM preservation
             },
-            url="http://127.0.0.1:1234/v1",
+            url=model_url,
             api_key="EMPTY"
         )
         
@@ -38,11 +38,11 @@ class OWLAgent:
             OpenAIFunction(browser.snapshot)
         ]
         
-        # System Message
+# System Message
         sys_msg = BaseMessage.make_assistant_message(
             role_name="OWLAgent",
             content="""You are the OWL Browser Agent, an expert in web research and navigation.
-Your goal is to fulfill user requests by browsing the web effectively.
+Your goal is to fulfill user requests by browsing the web effectively using the current Echo model.
 
 CORE CAPABILITIES:
 1. `search(query: str)`: Search DuckDuckGo for the specified query.
@@ -51,26 +51,32 @@ CORE CAPABILITIES:
 4. `type_text(selector: str, text: str)`: Type text into a field (e.g., 'n456').
 5. `snapshot(view: str = 'a11y', interactive_only: bool = True, limit: int = 150)`: View the current page state.
 
+IMPORTANT CONSTRAINTS:
+- You are using Echo's current MLX model (hot-swappable)
+- Be concise and efficient to preserve RAM
+- Use exactly ONE tool call per turn
+- Think step-by-step but keep reasoning brief
+
 TOOL CALLING FORMAT:
 You MUST provide exactly ONE tool call per turn using this XML format:
 <tool_call>
 {"name": "search", "parameters": {"query": "Hacker News top post"}}
-</tool_call>
+ 
 
 STRATEGY:
 - Start by searching if you don't have a direct URL.
 - Use `snapshot` to see the results and find element tags like `[n12]`.
 - To open a link, use `click('n12')` where `n12` is the link's tag.
-- Work step-by-step. Think clearly about your next move before calling a tool.
+- Work step-by-step. Keep thoughts brief.
 - If you have the final answer, start your response with "Answer:".
 
 EXAMPLE WORKFLOW:
-Thought: I need to find the top post on HN.
+Thought: Need top HN post.
 <tool_call>
 {"name": "navigate", "parameters": {"url": "https://news.ycombinator.com"}}
-</tool_call>
+ 
 Observation: Snapshot shows `[n1] Title of Post (author)`.
-Thought: I found the top post.
+Thought: Found top post.
 Answer: The top post is "Title of Post" by author.
 """
         )
