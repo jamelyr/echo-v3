@@ -391,7 +391,7 @@ Current Year: {datetime.now(pytz.timezone('Indian/Mauritius')).year}
 # --- HELPER FUNCTIONS ---
 
 TASK_QUERY_PATTERNS = re.compile(
-    r"\b(tasks|task list|todo|to-do|to do|what do i need to do|what's on my list|show my tasks|list tasks)\b",
+    r"\b(show|list|get|what are|what do|what's) (my )?(tasks|task list|todo|to-do)\b",
     re.IGNORECASE,
 )
 
@@ -441,6 +441,8 @@ _RE_LIST_NOTES = re.compile(r"list notes.*calendar\s+([\w-]+)(?:.*(\d{4}-\d{2}-\
 def _looks_like_task_query(text: str) -> bool:
     if not text:
         return False
+    # Only trigger if user explicitly asks to list/show tasks
+    # Avoid triggering on casual mentions of "task" in conversation
     return bool(TASK_QUERY_PATTERNS.search(text))
 
 
